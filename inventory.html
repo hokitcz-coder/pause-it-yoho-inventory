@@ -559,7 +559,7 @@
       name=name.trim();
       if(!name) return {ok:false,msg:"名稱不可為空"};
       if(this.all().some(l=>l===name)) return {ok:false,msg:"此位置已存在"};
-      this._list.push(name); this.save(); return {ok:true};
+      this._list.push(name); this.save(); Store.commit(); return {ok:true};
     },
     rename(oldName,newName){
       newName=newName.trim();
@@ -579,7 +579,7 @@
       if(idx<0) return {ok:false,msg:"找不到此位置"};
       const affected=db.items.filter(it=>it.cat===name);
       if(affected.length>0) return {ok:false,msg:"此位置仍有 "+affected.length+" 項物料，請先遷移或刪除",affected:affected.length};
-      this._list.splice(idx,1); this.save(); return {ok:true};
+      this._list.splice(idx,1); this.save(); Store.commit(); return {ok:true};
     },
     moveTo(oldName,newName){
       let count=0;
@@ -658,7 +658,7 @@
     if(syncInFlight){ if(!silent) toast("同步進行中，請稍候","bad"); return false; }
     syncInFlight=true; setSyncStatus("syncing");
     try{
-      const res=await fetch(Sync.cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"saveAll",data:db})});
+      const res=await fetch(Sync.cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"saveAll",data:{items:db.items,txs:db.txs,locations:Locations.all()}})});
       const j=await res.json();
       if(j.ok||j.items!==undefined){
         Sync.cfg.lastSync=Date.now(); Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok");
@@ -679,6 +679,10 @@
       if(j && j.items){
         db={items:j.items, txs:j.txs||[]};
         Store._d=db; Store.save(db);
+        if(j.locations && Array.isArray(j.locations) && j.locations.length>0){
+          Locations._list=j.locations.slice(); Locations.save();
+          refreshLocationDropdowns();
+        }
         Sync.cfg.lastSync=Date.now(); Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok"); renderAll();
         if(!silent) toast("已從雲端下載 "+j.items.length+" 項物料","good");
         return true;

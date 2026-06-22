@@ -16,8 +16,10 @@
 
 const SHEET_ITEMS = 'Items';
 const SHEET_TXS = 'Transactions';
+const SHEET_LOCS = 'Locations';
 const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'price', 'supplier'];
 const TX_HEADERS = ['id', 'itemId', 'type', 'qty', 'before', 'after', 'note', 'ts'];
+const LOC_HEADERS = ['name'];
 
 /** 取得或建立工作表（含標題列） */
 function getSheet(name, headers) {
@@ -70,10 +72,11 @@ function doPost(e) {
   return json({ error: 'unknown action: ' + body.action });
 }
 
-/** 讀取 Items + Transactions，回傳 JSON */
+/** 讀取 Items + Transactions + Locations，回傳 JSON */
 function getAll() {
   const itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
+  const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
   const items = readRows(itemSheet).map(function (r) {
     return {
       id: r[0], name: r[1], cat: r[2], unit: r[3],
@@ -88,22 +91,28 @@ function getAll() {
       note: r[6] || '', ts: Number(r[7]) || 0
     };
   });
-  return { items: items, txs: txs, syncedAt: Date.now() };
+  const locations = readRows(locSheet).map(function (r) { return r[0] || ''; }).filter(function (n) { return n; });
+  return { items: items, txs: txs, locations: locations, syncedAt: Date.now() };
 }
 
-/** 全量覆寫 Items + Transactions */
+/** 全量覆寫 Items + Transactions + Locations */
 function saveAll(data) {
   const itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
+  const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
   clearData(itemSheet);
   clearData(txSheet);
+  clearData(locSheet);
   (data.items || []).forEach(function (it) {
     itemSheet.appendRow([it.id, it.name, it.cat, it.unit, it.stock, it.min, it.price, it.supplier || '']);
   });
   (data.txs || []).forEach(function (t) {
     txSheet.appendRow([t.id, t.itemId, t.type, t.qty, t.before, t.after, t.note || '', t.ts]);
   });
-  return { ok: true, items: (data.items || []).length, txs: (data.txs || []).length };
+  (data.locations || []).forEach(function (name) {
+    locSheet.appendRow([name]);
+  });
+  return { ok: true, items: (data.items || []).length, txs: (data.txs || []).length, locations: (data.locations || []).length };
 }
 
 /** 建立供應商採購單新分頁 */
