@@ -432,13 +432,13 @@
     <div class="panel">
       <div class="panel-head"><h3>☁️ Google Sheets 雲端同步</h3></div>
       <div class="info-note">
-        連接 Google Sheets 後，庫存資料可跨裝置同步、在試算表直接查看。<br>
-        <strong>未填寫網址＝純本地模式</strong>（資料只存在這台瀏覽器）；填寫後即開啟雲端同步。
+        雲端同步已連接 Google Sheets，庫存資料可跨裝置同步、在試算表直接查看。<br>
+        開啟「自動同步」後，每次變動自動上傳雲端，啟動時自動下載最新資料。
       </div>
       <div class="field">
-        <label>Apps Script Web App 網址</label>
-        <input type="text" id="sync-url" placeholder="https://script.google.com/macros/s/..../exec">
-        <div class="field-hint">依照下方教學部署後，把取得的網址貼在這裡</div>
+        <label>Apps Script Web App 網址（已固定）</label>
+        <input type="text" id="sync-url" value="https://script.google.com/macros/s/AKfycbztkB0GGBbuPy8AvHSuOYV5-KW4j9Qqoxw23DJqOzFAATQvNyhYfCjCvZDkC-H4mXbO/exec" readonly style="background:#f5ede0;color:var(--muted);cursor:not-allowed">
+        <div class="field-hint">已內建連接網址，無需手動設定</div>
       </div>
       <div class="field">
         <label class="check-row"><input type="checkbox" id="sync-auto"> <span>開啟自動同步（每次變動後自動上傳雲端，啟動時自動下載最新）</span></label>
@@ -649,6 +649,7 @@
 
   /* ============ Cloud sync (Google Sheets via Apps Script) ============ */
   const SYNC_KEY = "cafe_inventory_sync_cfg";
+  const FIXED_SYNC_URL = "https://script.google.com/macros/s/AKfycbztkB0GGBbuPy8AvHSuOYV5-KW4j9Qqoxw23DJqOzFAATQvNyhYfCjCvZDkC-H4mXbO/exec";
   const APPS_SCRIPT_CODE =
 `/* Pause it Yoho 庫存管理 — Google Apps Script 後端
    貼到 Apps Script 編輯器後部署為「網路應用程式」即可 */
@@ -726,8 +727,8 @@ function savePO(data){
 }`;
 
   const Sync = {
-    cfg:{url:"",autoSync:false,lastSync:null,lastStatus:"none"},
-    load(){ try{ this.cfg=Object.assign(this.cfg, JSON.parse(localStorage.getItem(SYNC_KEY))); }catch(e){} },
+    cfg:{url:FIXED_SYNC_URL,autoSync:false,lastSync:null,lastStatus:"none"},
+    load(){ try{ this.cfg=Object.assign({url:FIXED_SYNC_URL,autoSync:false,lastSync:null,lastStatus:"none"}, JSON.parse(localStorage.getItem(SYNC_KEY))); this.cfg.url=FIXED_SYNC_URL; }catch(e){ this.cfg.url=FIXED_SYNC_URL; } },
     save(){ localStorage.setItem(SYNC_KEY, JSON.stringify(this.cfg)); },
     get on(){ return !!this.cfg.url; }
   };
@@ -779,15 +780,14 @@ function savePO(data){
     finally{ syncInFlight=false; }
   }
   async function testConnection(){
-    const url=$("#sync-url").value.trim();
-    if(!url){ toast("請先輸入網址","bad"); return; }
+    const url=FIXED_SYNC_URL;
     const btn=$("#sync-test"); btn.disabled=true; btn.textContent="測試中…";
     try{
       const res=await fetch(url+"?action=getAll&t="+Date.now());
       const j=await res.json();
       if(j && j.items!==undefined) toast("✅ 連線成功！雲端有 "+j.items.length+" 項物料、"+(j.txs?j.txs.length:0)+" 筆紀錄","good");
       else toast("連線成功但回應異常","bad");
-    }catch(e){ toast("連線失敗："+e.message+"（確認網址結尾 /exec、存取權設為「任何人」）","bad"); }
+    }catch(e){ toast("連線失敗："+e.message,"bad"); }
     btn.disabled=false; btn.textContent="測試連線";
   }
   function updateSyncLog(){
@@ -799,19 +799,19 @@ function savePO(data){
     log.className="sync-log "+(Sync.cfg.lastStatus||"none");
   }
   function initSettingsPage(){
-    $("#sync-url").value=Sync.cfg.url||"";
+    $("#sync-url").value=FIXED_SYNC_URL;
     $("#sync-auto").checked=!!Sync.cfg.autoSync;
     $("#script-code").value=APPS_SCRIPT_CODE;
     updateSyncLog();
     renderLocationList();
   }
   function saveSyncSettings(){
-    Sync.cfg.url=$("#sync-url").value.trim();
+    Sync.cfg.url=FIXED_SYNC_URL;
     Sync.cfg.autoSync=$("#sync-auto").checked;
     Sync.save();
     setSyncStatus(Sync.on?(Sync.cfg.lastStatus||"none"):"none");
     updateSyncLog();
-    toast(Sync.on?(Sync.cfg.autoSync?"已開啟雲端自動同步":"已儲存（手動同步模式）"):"已切換為純本地模式","good");
+    toast(Sync.cfg.autoSync?"已開啟雲端自動同步":"已儲存（手動同步模式）","good");
   }
 
   /* ---------- Location management ---------- */
@@ -1198,7 +1198,6 @@ function savePO(data){
   async function exportPOtoSheets(){
     const supplier = $("#po-supplier").value;
     if(!supplier){ toast("請先選擇供應商","bad"); return; }
-    if(!Sync.on){ toast("請先在「設定」頁連接 Google Sheets","bad"); return; }
     const poData = buildPOData(supplier);
     if(poData.items.length===0){ toast("此供應商沒有物料","bad"); return; }
     const btn = $("#po-export-btn");
