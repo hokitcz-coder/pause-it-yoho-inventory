@@ -825,37 +825,6 @@
     toast("已刪除位置「"+name+"」","good");
   }
 
-  /* ---------- Seeding demo data ---------- */
-  function seedIfEmpty(){
-    if(db.items.length>0) return;
-    const now = Date.now();
-    const demo = [
-      {name:"耶加雪菲咖啡豆",cat:"吧台",unit:"kg",stock:8.5,min:3,supplier:"豆豆貿易"},
-      {name:"巴西山多士咖啡豆",cat:"吧台",unit:"kg",stock:2.2,min:3,supplier:"豆豆貿易"},
-      {name:"鮮奶",cat:"冰箱",unit:"L",stock:18,min:10,supplier:"牧場直送"},
-      {name:"燕麥奶",cat:"冰箱",unit:"L",stock:4,min:6,supplier:"植物奶公司"},
-      {name:"二砂糖",cat:"倉庫",unit:"kg",stock:5,min:2,supplier:"烘焙材料行"},
-      {name:"焦糖糖漿",cat:"吧台",unit:"瓶",stock:3,min:4,supplier:"糖漿批發"},
-      {name:"12oz 外帶杯",cat:"倉庫",unit:"個",stock:850,min:300,supplier:"包材行"},
-      {name:"16oz 外帶杯",cat:"倉庫",unit:"個",stock:280,min:300,supplier:"包材行"},
-      {name:"杯蓋",cat:"倉庫",unit:"個",stock:120,min:300,supplier:"包材行"},
-      {name:"濾紙",cat:"倉庫",unit:"包",stock:6,min:3,supplier:"包材行"},
-      {name:"伯爵紅茶",cat:"吧台",unit:"kg",stock:1.2,min:1,supplier:"茶業行"}
-    ];
-    demo.forEach(d=>{
-      db.items.push(Object.assign({id:uid()}, d, {
-        stock:Number(d.stock), min:Number(d.min)
-      }));
-    });
-    // a few transactions
-    db.txs.push({id:uid(),itemId:db.items[0].id,type:"in",qty:10,before:0,after:10,note:"開店進貨",ts:now-86400000*5});
-    db.txs.push({id:uid(),itemId:db.items[0].id,type:"out",qty:1.5,before:10,after:8.5,note:"營業消耗",ts:now-86400000*2});
-    db.txs.push({id:uid(),itemId:db.items[2].id,type:"in",qty:20,before:0,after:20,note:"每日進貨",ts:now-86400000*3});
-    db.txs.push({id:uid(),itemId:db.items[2].id,type:"out",qty:2,before:20,after:18,note:"營業消耗",ts:now-86400000});
-    db.txs.push({id:uid(),itemId:db.items[7].id,type:"out",qty:120,before:400,after:280,note:"週末尖峰",ts:now-3600000*8});
-    Store.commit();
-  }
-
   /* ---------- Navigation ---------- */
   function go(page){
     $$(".page").forEach(p=>p.classList.remove("active"));
