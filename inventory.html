@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pause it Yoho 庫存管理系統</title>
+<style>
+  :root{
+    --espresso:#3b2417;
+    --coffee:#6f4e37;
+    --latte:#a87f5d;
+    --cream:#f5ede0;
+    --foam:#faf5ee;
+    --caramel:#c9a27c;
+    --bg:#efe7da;
+    --ink:#2b1d14;
+    --muted:#8a7766;
+    --line:#e0d4c2;
+    --good:#4a7c59;
+    --warn:#c9821b;
+    --bad:#b3422b;
+    --good-bg:#eaf3ec;
+    --warn-bg:#fbf0db;
+    --bad-bg:#f7e4e0;
+    --shadow:0 6px 20px rgba(59,36,23,.10);
+    --radius:14px;
+    --radius-sm:9px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    background:linear-gradient(135deg,var(--espresso),var(--coffee));
+    color:var(--foam);
+    padding:14px 20px;
+    box-shadow:var(--shadow);
+    position:sticky;top:0;z-index:50;
+  }
+  .header-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:700;letter-spacing:.5px}
+  .brand .logo{
+    width:38px;height:38px;border-radius:50%;
+    background:#fff;
+    display:grid;place-items:center;font-size:20px;overflow:hidden;
+    box-shadow:inset 0 0 0 3px rgba(255,255,255,.25);
+  }
+  nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+  nav button{
+    background:transparent;border:none;color:rgba(255,255,255,.78);
+    font-size:15px;font-weight:500;padding:9px 15px;border-radius:var(--radius-sm);
+    cursor:pointer;transition:.18s;font-family:inherit;
+  }
+  nav button:hover{background:rgba(255,255,255,.12);color:#fff}
+  nav button.active{background:rgba(255,255,255,.22);color:#fff}
+
+  /* ---------- Layout ---------- */
+  main{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+  .page{display:none;animation:fade .25s ease}
+  .page.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .page-title{font-size:24px;font-weight:700;margin-bottom:4px;color:var(--espresso)}
+  .page-sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+
+  /* ---------- Cards / stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:26px}
+  .stat{
+    background:var(--foam);border-radius:var(--radius);padding:18px 20px;
+    box-shadow:var(--shadow);border:1px solid var(--line);
+    display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;
+  }
+  .stat::before{content:"";position:absolute;right:-18px;top:-18px;width:70px;height:70px;border-radius:50%;background:rgba(169,127,93,.10)}
+  .stat .label{font-size:13px;color:var(--muted);font-weight:500}
+  .stat .value{font-size:30px;font-weight:800;color:var(--espresso);line-height:1.1}
+  .stat .value small{font-size:15px;font-weight:600;color:var(--muted);margin-left:3px}
+  .stat .hint{font-size:12px;color:var(--muted)}
+  .stat.warn .value{color:var(--warn)}
+  .stat.bad .value{color:var(--bad)}
+
+  .panel{
+    background:var(--foam);border-radius:var(--radius);padding:20px;
+    box-shadow:var(--shadow);border:1px solid var(--line);margin-bottom:22px;
+  }
+  .panel-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .panel-head h3{font-size:17px;color:var(--espresso)}
+  .panel-head .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    font-family:inherit;font-size:14px;font-weight:600;border:none;border-radius:var(--radius-sm);
+    padding:9px 16px;cursor:pointer;transition:.16s;display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn-primary{background:var(--coffee);color:#fff}
+  .btn-primary:hover{background:var(--espresso)}
+  .btn-ghost{background:var(--cream);color:var(--coffee)}
+  .btn-ghost:hover{background:#ead9c4}
+  .btn-danger{background:var(--bad);color:#fff}
+  .btn-danger:hover{filter:brightness(.92)}
+  .btn-sm{padding:6px 11px;font-size:13px}
+  .btn-outline{background:transparent;border:1.5px solid var(--latte);color:var(--coffee)}
+  .btn-outline:hover{background:var(--cream)}
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .search{
+    flex:1;min-width:200px;display:flex;align-items:center;gap:8px;
+    background:var(--foam);border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 13px;
+  }
+  .search:focus-within{border-color:var(--latte)}
+  .search input{border:none;outline:none;background:transparent;font-size:14px;width:100%;font-family:inherit;color:var(--ink)}
+  .filter-sel{
+    font-family:inherit;font-size:14px;padding:9px 12px;border:1.5px solid var(--line);
+    border-radius:var(--radius-sm);background:var(--foam);color:var(--ink);cursor:pointer;outline:none;
+  }
+  .filter-sel:focus{border-color:var(--latte)}
+
+  /* ---------- Table ---------- */
+  .table-wrap{overflow-x:auto;border-radius:var(--radius-sm)}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+  thead th{
+    text-align:left;padding:12px 14px;background:var(--cream);color:var(--espresso);
+    font-weight:700;font-size:13px;border-bottom:2px solid var(--line);white-space:nowrap;
+    position:sticky;top:0;
+  }
+  thead th.sortable{cursor:pointer;user-select:none}
+  thead th.sortable:hover{color:var(--coffee)}
+  thead th .arrow{font-size:10px;margin-left:3px;opacity:.5}
+  tbody td{padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:hover{background:rgba(201,162,124,.08)}
+  tbody tr:last-child td{border-bottom:none}
+  .cat-tag{
+    display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;
+    background:var(--cream);color:var(--coffee);
+  }
+  .stock-cell{font-weight:700;color:var(--espresso)}
+  .stock-cell.low{color:var(--warn)}
+  .stock-cell.out{color:var(--bad)}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700}
+  .badge.in{background:var(--good-bg);color:var(--good)}
+  .badge.out{background:var(--bad-bg);color:var(--bad)}
+  .badge.adj{background:var(--warn-bg);color:var(--warn)}
+  .row-actions{display:flex;gap:6px;white-space:nowrap}
+  .empty{text-align:center;padding:42px 20px;color:var(--muted)}
+  .empty .ico{font-size:40px;display:block;margin-bottom:8px;opacity:.5}
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(43,29,20,.55);backdrop-filter:blur(3px);
+    display:none;align-items:flex-start;justify-content:center;z-index:100;padding:30px 16px;overflow-y:auto;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:var(--foam);border-radius:var(--radius);width:100%;max-width:520px;
+    box-shadow:0 20px 60px rgba(0,0,0,.3);animation:pop .2s ease;margin:auto;
+  }
+  @keyframes pop{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+  .modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+  .modal-head h3{font-size:18px;color:var(--espresso)}
+  .modal-head .x{margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;line-height:1}
+  .modal-head .x:hover{color:var(--ink)}
+  .modal-body{padding:22px}
+  .modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--cream);border-radius:0 0 var(--radius) var(--radius)}
+
+  /* ---------- Form ---------- */
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--coffee);margin-bottom:6px}
+  .field label .req{color:var(--bad)}
+  .field input,.field select,.field textarea{
+    width:100%;font-family:inherit;font-size:15px;padding:10px 13px;border:1.5px solid var(--line);
+    border-radius:var(--radius-sm);background:#fff;color:var(--ink);outline:none;transition:.15s;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--latte);box-shadow:0 0 0 3px rgba(168,127,93,.15)}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .field-hint{font-size:12px;color:var(--muted);margin-top:5px}
+  .type-tabs{display:flex;gap:8px;margin-bottom:18px}
+  .type-tab{
+    flex:1;padding:14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:#fff;
+    cursor:pointer;text-align:center;font-weight:600;font-size:14px;transition:.15s;font-family:inherit;color:var(--muted);
+  }
+  .type-tab:hover{border-color:var(--latte)}
+  .type-tab.active.in{background:var(--good);border-color:var(--good);color:#fff}
+  .type-tab.active.out{background:var(--bad);border-color:var(--bad);color:#fff}
+  .type-tab.active.adj{background:var(--warn);border-color:var(--warn);color:#fff}
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--espresso);color:#fff;padding:12px 22px;border-radius:30px;font-size:14px;font-weight:500;
+    box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:200;opacity:0;transition:.3s;pointer-events:none;
+  }
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  #toast.good{background:var(--good)}
+  #toast.bad{background:var(--bad)}
+
+  /* ---------- Alert list ---------- */
+  .alert-item{
+    display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:var(--radius-sm);
+    background:var(--warn-bg);border-left:4px solid var(--warn);margin-bottom:10px;
+  }
+  .alert-item.crit{background:var(--bad-bg);border-left-color:var(--bad)}
+  .alert-item .ico{font-size:22px}
+  .alert-item .info{flex:1}
+  .alert-item .info .n{font-weight:700;color:var(--espresso)}
+  .alert-item .info .s{font-size:13px;color:var(--muted)}
+  .alert-item .restock{font-size:13px;font-weight:600;padding:7px 13px}
+
+  .hint-bar{
+    display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--radius-sm);
+    background:var(--cream);color:var(--coffee);font-size:13px;margin-bottom:18px;
+  }
+  .loc-row{display:flex;align-items:center;gap:12px;padding:11px 15px;border-radius:var(--radius-sm);background:var(--cream);margin-bottom:8px}
+  .loc-row .loc-ico{font-size:18px}
+  .loc-row .loc-name{font-weight:700;color:var(--espresso);font-size:15px}
+  .loc-row .loc-count{font-size:13px;color:var(--muted);margin-left:4px}
+  .loc-row .loc-actions{margin-left:auto;display:flex;gap:6px}
+  .footer-note{text-align:center;color:var(--muted);font-size:12px;margin-top:30px;padding-top:20px;border-top:1px solid var(--line)}
+
+  /* ---------- Sync / Settings ---------- */
+  .sync-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#9a9a9a;margin-right:6px;vertical-align:middle;box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+  .sync-dot.gray{background:#9a9a9a}
+  .sync-dot.green{background:#5bbd7a;box-shadow:0 0 6px rgba(91,189,122,.7),0 0 0 2px rgba(255,255,255,.18)}
+  .sync-dot.orange{background:#e8a13a;animation:pulse 1s infinite}
+  .sync-dot.red{background:#d65a4a}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .check-row{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);cursor:pointer;font-weight:500}
+  .check-row input{width:auto;cursor:pointer}
+  .sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+  .sync-log{font-size:13px;color:var(--muted);padding:11px 15px;border-radius:var(--radius-sm);background:var(--cream);margin-top:10px}
+  .sync-log.ok{color:var(--good);background:var(--good-bg)}
+  .sync-log.error{color:var(--bad);background:var(--bad-bg)}
+  .sync-log.syncing{color:var(--warn);background:var(--warn-bg)}
+  .step-list{padding-left:0;list-style:none;counter-reset:step;margin-bottom:16px}
+  .step-list li{position:relative;padding:11px 14px 11px 48px;margin-bottom:9px;background:var(--cream);border-radius:var(--radius-sm);font-size:14px;line-height:1.65}
+  .step-list li::before{counter-increment:step;content:counter(step);position:absolute;left:11px;top:11px;width:28px;height:28px;border-radius:50%;background:var(--coffee);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .step-list li strong{color:var(--espresso)}
+  .step-list li code{background:#fff;padding:1px 6px;border-radius:4px;font-size:13px;border:1px solid var(--line)}
+  .code-box{width:100%;font-family:"SFMono-Regular",Consolas,Menlo,monospace;font-size:12px;padding:14px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:#fbf8f3;color:var(--ink);resize:vertical;min-height:140px;line-height:1.55;white-space:pre;overflow-x:auto}
+  .info-note{font-size:13px;color:var(--coffee);background:var(--cream);padding:12px 15px;border-radius:var(--radius-sm);border-left:4px solid var(--caramel);margin-bottom:14px;line-height:1.6}
+  .info-note strong{color:var(--espresso)}
+
+  @media(max-width:640px){
+    .field-row{grid-template-columns:1fr}
+    nav button{padding:8px 11px;font-size:14px}
+    .brand{font-size:16px}
+    .stat .value{font-size:26px}
+    main{padding:18px 14px 50px}
+  }
+  .logo-img{width:100%;height:100%;object-fit:contain;display:block}
+  .po-brand img{height:26px;vertical-align:middle;margin-right:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand"><span class="logo"><img class="logo-img" alt="logo"></span> Pause it Yoho 庫存管理</div>
+    <nav id="nav">
+      <button data-page="dashboard" class="active">儀表板</button>
+      <button data-page="items">物料管理</button>
+      <button data-page="stock">入出庫</button>
+      <button data-page="history">歷史記錄</button>
+      <button data-page="alerts">低庫存預警</button>
+      <button data-page="settings"><span class="sync-dot gray" id="sync-dot"></span>設定</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ============ Dashboard ============ -->
+  <section class="page active" id="page-dashboard">
+    <div class="page-title">儀表板</div>
+    <div class="page-sub">快速掌握庫存現況與異動</div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>⚠️ 待補貨清單</h3>
+        <div class="sp"><button class="btn btn-outline btn-sm" data-go="alerts">查看全部</button></div>
+      </div>
+      <div id="dash-alerts"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>🕐 近期異動</h3>
+        <div class="sp"><button class="btn btn-outline btn-sm" data-go="history">完整記錄</button></div>
+      </div>
+      <div id="dash-recent"></div>
+    </div>
+  </section>
+
+  <!-- ============ Items ============ -->
+  <section class="page" id="page-items">
+    <div class="page-title">物料管理</div>
+    <div class="page-sub">管理店內所有物料品項、儲存位置與安全庫存</div>
+
+    <div class="toolbar">
+      <div class="search">🔍 <input id="item-search" placeholder="搜尋物料名稱或供應商…"></div>
+      <select class="filter-sel" id="item-cat-filter">
+        <option value="">全部儲存位置</option>
+      </select>
+      <button class="btn btn-primary" id="add-item-btn">＋ 新增物料</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>🧾 匯出供應商採購單</h3></div>
+      <div class="toolbar" style="margin-bottom:0">
+        <select class="filter-sel" id="po-supplier" style="min-width:180px">
+          <option value="">— 選擇供應商 —</option>
+        </select>
+        <button class="btn btn-primary" id="po-export-btn">📥 匯出到 Google Sheets</button>
+        <button class="btn btn-ghost" id="po-preview-btn">📋 預覽列印</button>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table id="items-table">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="name">物料名稱<span class="arrow"></span></th>
+              <th>儲存位置</th>
+              <th class="sortable" data-sort="stock">當前庫存<span class="arrow"></span></th>
+              <th>安全庫存</th>
+              <th>供應商</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Stock ops ============ -->
+  <section class="page" id="page-stock">
+    <div class="page-title">入出庫作業</div>
+    <div class="page-sub">記錄進貨、消耗或盤點調整，系統自動更新庫存</div>
+
+    <div class="panel" style="max-width:560px">
+      <div class="type-tabs" id="type-tabs">
+        <button class="type-tab active in" data-type="in">📥 入庫</button>
+        <button class="type-tab out" data-type="out">📤 出庫</button>
+        <button class="type-tab adj" data-type="adj">⚖️ 盤點調整</button>
+      </div>
+
+      <div class="field">
+        <label>儲存位置</label>
+        <select id="tx-location">
+          <option value="">— 全部位置 —</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>選擇物料 <span class="req">*</span></label>
+        <select id="tx-item"></select>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>數量 <span class="req">*</span></label>
+          <input type="number" id="tx-qty" min="0" step="0.01" placeholder="0">
+        </div>
+        <div class="field">
+          <label>日期</label>
+          <input type="date" id="tx-date">
+        </div>
+      </div>
+      <div class="field">
+        <label>備註</label>
+        <input type="text" id="tx-note" placeholder="例：供應商送貨 / 週末營業消耗 / 盤點差異">
+      </div>
+      <div class="hint-bar" id="tx-preview">請選擇物料並輸入數量</div>
+      <button class="btn btn-primary" id="tx-submit" style="width:100%;justify-content:center">確認送出</button>
+    </div>
+  </section>
+
+  <!-- ============ History ============ -->
+  <section class="page" id="page-history">
+    <div class="page-title">歷史記錄</div>
+    <div class="page-sub">查詢所有進出庫與調整紀錄</div>
+
+    <div class="toolbar">
+      <div class="search">🔍 <input id="hist-search" placeholder="搜尋物料或備註…"></div>
+      <select class="filter-sel" id="hist-type-filter">
+        <option value="">全部類型</option>
+        <option value="in">入庫</option>
+        <option value="out">出庫</option>
+        <option value="adj">調整</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" id="export-btn">⬇ 匯出 JSON</button>
+      <button class="btn btn-outline btn-sm" id="import-btn">⬆ 匯入</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none">
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table id="hist-table">
+          <thead>
+            <tr>
+              <th>時間</th>
+              <th>類型</th>
+              <th>物料</th>
+              <th>數量</th>
+              <th>異動前</th>
+              <th>異動後</th>
+              <th>備註</th>
+            </tr>
+          </thead>
+          <tbody id="hist-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Alerts ============ -->
+  <section class="page" id="page-alerts">
+    <div class="page-title">低庫存預警</div>
+    <div class="page-sub">低於安全庫存的物料，建議儘速補貨</div>
+    <div id="alerts-list"></div>
+  </section>
+
+  <!-- ============ Settings ============ -->
+  <section class="page" id="page-settings">
+    <div class="page-title">設定</div>
+    <div class="page-sub">雲端同步與資料管理</div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>☁️ Google Sheets 雲端同步</h3></div>
+      <div class="info-note">
+        連接 Google Sheets 後，庫存資料可跨裝置同步、在試算表直接查看。<br>
+        <strong>未填寫網址＝純本地模式</strong>（資料只存在這台瀏覽器）；填寫後即開啟雲端同步。
+      </div>
+      <div class="field">
+        <label>Apps Script Web App 網址</label>
+        <input type="text" id="sync-url" placeholder="https://script.google.com/macros/s/..../exec">
+        <div class="field-hint">依照下方教學部署後，把取得的網址貼在這裡</div>
+      </div>
+      <div class="field">
+        <label class="check-row"><input type="checkbox" id="sync-auto"> <span>開啟自動同步（每次變動後自動上傳雲端，啟動時自動下載最新）</span></label>
+      </div>
+      <div class="sync-actions">
+        <button class="btn btn-primary" id="sync-save">儲存設定</button>
+        <button class="btn btn-outline" id="sync-test">測試連線</button>
+        <button class="btn btn-ghost" id="sync-upload-now">⬆ 上傳到雲端</button>
+        <button class="btn btn-ghost" id="sync-download-now">⬇ 從雲端下載</button>
+      </div>
+      <div class="sync-log" id="sync-log">尚未連線</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>📋 Google Sheets 連線教學（只需做一次）</h3>
+        <div class="sp"><button class="btn btn-ghost btn-sm" id="copy-script">📋 複製代碼</button></div>
+      </div>
+      <ol class="step-list">
+        <li>開啟 <a href="https://sheets.new" target="_blank" style="color:var(--coffee)">sheets.new</a> 建立一張空白 Google 試算表（會自動存在你的 Google 雲端硬碟）。</li>
+        <li>在試算表選單點 <code>擴充功能 → Apps Script</code>，開啟程式碼編輯器。</li>
+        <li>把編輯器裡原有的程式碼<strong>全部刪除</strong>，貼上下方框內的代碼，按 <code>Ctrl/Cmd + S</code> 儲存。</li>
+        <li>點右上角 <code>部署 → 新增部署作業</code>，齒輪選 <strong>網路應用程式</strong>。</li>
+        <li>「執行身分」選<strong>自己</strong>；「具有存取權的使用者」選<strong>任何人</strong>（讓 app 能呼叫），點「部署」。</li>
+        <li>首次部署需<strong>授權</strong>：點「允許」→ 選你的 Google 帳號 → 進階 →「前往未命名的專案」→ 允許。</li>
+        <li>複製出現的<strong>網址</strong>（結尾是 <code>/exec</code>），貼到上方欄位，點「儲存設定」再「測試連線」即可。</li>
+      </ol>
+      <textarea class="code-box" id="script-code" readonly></textarea>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>📍 儲存位置管理</h3></div>
+      <div class="info-note">管理物料的儲存位置選項。新增、重新命名或刪除位置，所有下拉選單會即時更新。</div>
+      <div id="loc-list" style="margin-bottom:14px"></div>
+      <div class="toolbar" style="margin-bottom:0">
+        <input type="text" id="loc-new-name" placeholder="新增位置名稱…" style="flex:1;min-width:180px;font-family:inherit;font-size:15px;padding:9px 13px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:#fff;outline:none">
+        <button class="btn btn-primary" id="loc-add-btn">＋ 新增</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>💾 資料備份與還原</h3></div>
+      <div class="info-note">即使啟用雲端同步，仍建議定期匯出 JSON 備份到本機，雙重保險。</div>
+      <div class="sync-actions">
+        <button class="btn btn-ghost" id="export-btn2">⬇ 匯出 JSON 備份</button>
+        <button class="btn btn-outline" id="import-btn2">⬆ 匯入還原</button>
+        <input type="file" id="import-file2" accept="application/json" style="display:none">
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-note">☕ Pause it Yoho 庫存管理系統 · 本地+雲端雙模式 · 建議定期備份</div>
+</main>
+
+<!-- ============ Item Modal ============ -->
+<div class="overlay" id="item-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="item-modal-title">新增物料</h3>
+      <button class="x" data-close="item-overlay">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="item-id">
+      <div class="field">
+        <label>物料名稱 <span class="req">*</span></label>
+        <input type="text" id="item-name" placeholder="例：耶加雪菲咖啡豆">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>儲存位置 <span class="req">*</span></label>
+          <select id="item-cat"></select>
+        </div>
+        <div class="field">
+          <label>單位 <span class="req">*</span></label>
+          <select id="item-unit">
+            <option>kg</option><option>g</option><option>L</option><option>ml</option>
+            <option>個</option><option>包</option><option>箱</option><option>瓶</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>當前庫存</label>
+          <input type="number" id="item-stock" min="0" step="0.01" value="0">
+          <div class="field-hint">新建物料時直接設定初始庫存</div>
+        </div>
+        <div class="field">
+          <label>安全庫存（低於此值預警）<span class="req">*</span></label>
+          <input type="number" id="item-min" min="0" step="0.01" placeholder="0">
+        </div>
+      </div>
+      <div class="field">
+        <label>供應商</label>
+        <input type="text" id="item-supplier" placeholder="例：咖啡豆貿易公司">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close="item-overlay">取消</button>
+      <button class="btn btn-primary" id="item-save">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Confirm Modal ============ -->
+<div class="overlay" id="confirm-overlay">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head"><h3 id="confirm-title">確認</h3><button class="x" data-close="confirm-overlay">×</button></div>
+    <div class="modal-body"><p id="confirm-msg" style="color:var(--muted)"></p></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close="confirm-overlay">取消</button>
+      <button class="btn btn-danger" id="confirm-ok">確認刪除</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   Pause it Yoho 庫存管理系統 — 核心邏輯
+   ========================================================= */
+(function(){
+  "use strict";
+
+  const LOGO_DATA = "data:image/png;base64,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";
+  const KEY = "cafe_inventory_v1";
+  const LOC_KEY = "cafe_inventory_locations";
+  const DEFAULT_LOCATIONS = ["吧台","冰箱","倉庫","冷凍庫","後廚","展示區","其他"];
+  const Locations = {
+    load(){ try{ const v=JSON.parse(localStorage.getItem(LOC_KEY)); return (Array.isArray(v)&&v.length)?v:DEFAULT_LOCATIONS.slice(); }catch(e){ return DEFAULT_LOCATIONS.slice(); } },
+    save(){ localStorage.setItem(LOC_KEY, JSON.stringify(this._list)); },
+    _list:null,
+    all(){ if(!this._list) this._list=this.load(); return this._list; },
+    add(name){
+      name=name.trim();
+      if(!name) return {ok:false,msg:"名稱不可為空"};
+      if(this.all().some(l=>l===name)) return {ok:false,msg:"此位置已存在"};
+      this._list.push(name); this.save(); return {ok:true};
+    },
+    rename(oldName,newName){
+      newName=newName.trim();
+      if(!newName) return {ok:false,msg:"名稱不可為空"};
+      if(oldName===newName) return {ok:true};
+      if(this.all().some(l=>l===newName)) return {ok:false,msg:"此名稱已存在"};
+      const idx=this._list.indexOf(oldName);
+      if(idx<0) return {ok:false,msg:"找不到原位置"};
+      this._list[idx]=newName; this.save();
+      // update all items using this location
+      db.items.forEach(it=>{ if(it.cat===oldName) it.cat=newName; });
+      Store.commit();
+      return {ok:true};
+    },
+    remove(name){
+      const idx=this._list.indexOf(name);
+      if(idx<0) return {ok:false,msg:"找不到此位置"};
+      const affected=db.items.filter(it=>it.cat===name);
+      if(affected.length>0) return {ok:false,msg:"此位置仍有 "+affected.length+" 項物料，請先遷移或刪除",affected:affected.length};
+      this._list.splice(idx,1); this.save(); return {ok:true};
+    },
+    moveTo(oldName,newName){
+      let count=0;
+      db.items.forEach(it=>{ if(it.cat===oldName){ it.cat=newName; count++; } });
+      if(count>0) Store.commit();
+      return count;
+    }
+  };
+
+  /* ---------- Store ---------- */
+  const Store = {
+    load(){
+      try{ return JSON.parse(localStorage.getItem(KEY)) || {items:[],txs:[]}; }
+      catch(e){ return {items:[],txs:[]}; }
+    },
+    save(data){ localStorage.setItem(KEY, JSON.stringify(data)); },
+    get(){ if(!this._d) this._d = this.load(); return this._d; },
+    commit(){ this.save(this._d); scheduleAutoSync(); }
+  };
+
+  let db = Store.get();
+
+  /* ---------- Utils ---------- */
+  const $ = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+  const uid = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  const money = n => "NT$"+(Number(n)||0).toLocaleString("zh-TW",{maximumFractionDigits:1});
+  const fmtDate = ts => {
+    const d = new Date(ts);
+    const p = n=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const todayStr = ()=>{const d=new Date();const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;};
+
+  function toast(msg,type){
+    const t = $("#toast");
+    t.textContent = msg;
+    t.className = "show "+(type||"");
+    clearTimeout(t._t);
+    t._t = setTimeout(()=> t.className = "",2200);
+  }
+
+  let confirmCb = null;
+  function confirmDialog(title,msg,cb,okText){
+    $("#confirm-title").textContent = title;
+    $("#confirm-msg").textContent = msg;
+    $("#confirm-ok").textContent = okText||"確認刪除";
+    confirmCb = cb;
+    $("#confirm-overlay").classList.add("show");
+  }
+
+  /* ============ Cloud sync (Google Sheets via Apps Script) ============ */
+  const SYNC_KEY = "cafe_inventory_sync_cfg";
+  const APPS_SCRIPT_CODE =
+`/* Pause it Yoho 庫存管理 — Google Apps Script 後端
+   貼到 Apps Script 編輯器後部署為「網路應用程式」即可 */
+const SHEET_ITEMS='Items', SHEET_TXS='Transactions';
+const ITEM_HEADERS=['id','name','cat','unit','stock','min','price','supplier'];
+const TX_HEADERS=['id','itemId','type','qty','before','after','note','ts'];
+
+function getSheet(name, headers){
+  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  let sheet=ss.getSheetByName(name);
+  if(!sheet){ sheet=ss.insertSheet(name); sheet.appendRow(headers); sheet.setFrozenRows(1); }
+  return sheet;
+}
+function readRows(sheet){
+  const last=sheet.getLastRow(); if(last<2) return [];
+  return sheet.getRange(2,1,last-1,sheet.getLastColumn()).getValues();
+}
+function clearData(sheet){
+  const last=sheet.getLastRow(); if(last>1) sheet.deleteRows(2,last-1);
+}
+function json(obj){ return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
+
+function doGet(e){
+  const action=(e&&e.parameter&&e.parameter.action)||'getAll';
+  if(action==='getAll') return json(getAll());
+  return json({error:'unknown action: '+action});
+}
+function doPost(e){
+  let body; try{ body=JSON.parse(e.postData.contents); }catch(err){ return json({error:'invalid JSON'}); }
+  if(body.action==='saveAll') return json(saveAll(body.data));
+  if(body.action==='savePO') return json(savePO(body.data));
+  return json({error:'unknown action: '+body.action});
+}
+function getAll(){
+  const itemSheet=getSheet(SHEET_ITEMS,ITEM_HEADERS);
+  const txSheet=getSheet(SHEET_TXS,TX_HEADERS);
+  const items=readRows(itemSheet).map(function(r){return{id:r[0],name:r[1],cat:r[2],unit:r[3],stock:Number(r[4])||0,min:Number(r[5])||0,price:Number(r[6])||0,supplier:r[7]||''};});
+  const txs=readRows(txSheet).map(function(r){return{id:r[0],itemId:r[1],type:r[2],qty:Number(r[3])||0,before:Number(r[4])||0,after:Number(r[5])||0,note:r[6]||'',ts:Number(r[7])||0};});
+  return {items:items, txs:txs, syncedAt:Date.now()};
+}
+function saveAll(data){
+  const itemSheet=getSheet(SHEET_ITEMS,ITEM_HEADERS);
+  const txSheet=getSheet(SHEET_TXS,TX_HEADERS);
+  clearData(itemSheet); clearData(txSheet);
+  (data.items||[]).forEach(function(it){ itemSheet.appendRow([it.id,it.name,it.cat,it.unit,it.stock,it.min,it.price,it.supplier||'']); });
+  (data.txs||[]).forEach(function(t){ txSheet.appendRow([t.id,t.itemId,t.type,t.qty,t.before,t.after,t.note||'',t.ts]); });
+  return {ok:true, items:(data.items||[]).length, txs:(data.txs||[]).length};
+}
+function savePO(data){
+  const ss=SpreadsheetApp.getActiveSpreadsheet();
+  var safeName=(data.supplier||'採購單').replace(/[/\\?*:\[\]\]]/g,'');
+  var sheetName='採購單_'+safeName+'_'+data.date;
+  var existing=ss.getSheetByName(sheetName); if(existing) ss.deleteSheet(existing);
+  var sheet=ss.insertSheet(sheetName);
+  sheet.getRange(1,1).setValue('Pause it Yoho — 供應商採購單').setFontWeight('bold').setFontSize(14).setFontColor('#3b2417');
+  sheet.getRange(2,1).setValue('供應商：'+data.supplier);
+  sheet.getRange(2,4).setValue('日期：'+data.date);
+  var headers=['#','物料名稱','儲存位置','當前庫存','安全庫存','建議採購量'];
+  sheet.getRange(4,1,1,6).setValues([headers]).setFontWeight('bold').setBackground('#f5ede0').setFontColor('#3b2417');
+  var rows=(data.items||[]).map(function(it,i){return [i+1,it.name,it.location,it.stock+' '+it.unit,it.min+' '+it.unit, it.need>0 ? (it.need+' '+it.unit) : '—'];});
+  if(rows.length>0){
+    sheet.getRange(5,1,rows.length,6).setValues(rows);
+    data.items.forEach(function(it,i){ if(it.need>0){ sheet.getRange(5+i,1,1,6).setBackground('#fbf0db'); sheet.getRange(5+i,6).setFontColor('#b3422b').setFontWeight('bold'); } });
+  }
+  var sumRow=5+rows.length+1;
+  var needCount=(data.items||[]).filter(function(it){return it.need>0;}).length;
+  sheet.getRange(sumRow,1).setValue('共 '+(data.items||[]).length+' 項，其中 '+needCount+' 項需採購').setFontWeight('bold');
+  sheet.getRange(sumRow+2,1).setValue('採購人：____________');
+  sheet.getRange(sumRow+2,3).setValue('日期：____________');
+  sheet.getRange(sumRow+2,5).setValue('供應商簽收：____________');
+  sheet.setColumnWidth(1,40); sheet.setColumnWidth(2,220); sheet.setColumnWidth(3,100);
+  sheet.setColumnWidth(4,110); sheet.setColumnWidth(5,110); sheet.setColumnWidth(6,120);
+  sheet.setFrozenRows(4);
+  return {ok:true, sheetName:sheetName, url:ss.getUrl()};
+}`;
+
+  const Sync = {
+    cfg:{url:"",autoSync:false,lastSync:null,lastStatus:"none"},
+    load(){ try{ this.cfg=Object.assign(this.cfg, JSON.parse(localStorage.getItem(SYNC_KEY))); }catch(e){} },
+    save(){ localStorage.setItem(SYNC_KEY, JSON.stringify(this.cfg)); },
+    get on(){ return !!this.cfg.url; }
+  };
+
+  let syncTimer=null, syncInFlight=false;
+  function scheduleAutoSync(){
+    if(!Sync.on || !Sync.cfg.autoSync || syncInFlight) return;
+    clearTimeout(syncTimer);
+    syncTimer=setTimeout(function(){ syncUp(true); }, 1500);
+  }
+  function setSyncStatus(s){
+    const dot=$("#sync-dot"); if(!dot) return;
+    dot.className="sync-dot "+({none:"gray",ok:"green",syncing:"orange",error:"red"}[s]||"gray");
+    dot.title=Sync.on?("雲端同步："+({none:"待同步",ok:"已同步",syncing:"進行中",error:"失敗"}[s]||"")):"本地模式（未連接雲端）";
+    if($("#sync-log")) updateSyncLog();
+  }
+  async function syncUp(silent){
+    if(!Sync.on) return false;
+    if(syncInFlight){ if(!silent) toast("同步進行中，請稍候","bad"); return false; }
+    syncInFlight=true; setSyncStatus("syncing");
+    try{
+      const res=await fetch(Sync.cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"saveAll",data:db})});
+      const j=await res.json();
+      if(j.ok||j.items!==undefined){
+        Sync.cfg.lastSync=Date.now(); Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok");
+        if(!silent) toast("已上傳 "+db.items.length+" 項物料到雲端","good");
+        return true;
+      }
+      throw new Error(j.error||"儲存失敗");
+    }catch(e){ Sync.cfg.lastStatus="error"; Sync.save(); setSyncStatus("error"); if(!silent) toast("上傳失敗："+e.message,"bad"); return false; }
+    finally{ syncInFlight=false; }
+  }
+  async function syncDown(silent){
+    if(!Sync.on) return false;
+    if(syncInFlight){ if(!silent) toast("同步進行中，請稍候","bad"); return false; }
+    syncInFlight=true; setSyncStatus("syncing");
+    try{
+      const res=await fetch(Sync.cfg.url+"?action=getAll&t="+Date.now());
+      const j=await res.json();
+      if(j && j.items){
+        db={items:j.items, txs:j.txs||[]};
+        Store._d=db; Store.save(db);
+        Sync.cfg.lastSync=Date.now(); Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok"); renderAll();
+        if(!silent) toast("已從雲端下載 "+j.items.length+" 項物料","good");
+        return true;
+      }
+      throw new Error(j.error||"格式錯誤");
+    }catch(e){ Sync.cfg.lastStatus="error"; Sync.save(); setSyncStatus("error"); if(!silent) toast("下載失敗："+e.message,"bad"); return false; }
+    finally{ syncInFlight=false; }
+  }
+  async function testConnection(){
+    const url=$("#sync-url").value.trim();
+    if(!url){ toast("請先輸入網址","bad"); return; }
+    const btn=$("#sync-test"); btn.disabled=true; btn.textContent="測試中…";
+    try{
+      const res=await fetch(url+"?action=getAll&t="+Date.now());
+      const j=await res.json();
+      if(j && j.items!==undefined) toast("✅ 連線成功！雲端有 "+j.items.length+" 項物料、"+(j.txs?j.txs.length:0)+" 筆紀錄","good");
+      else toast("連線成功但回應異常","bad");
+    }catch(e){ toast("連線失敗："+e.message+"（確認網址結尾 /exec、存取權設為「任何人」）","bad"); }
+    btn.disabled=false; btn.textContent="測試連線";
+  }
+  function updateSyncLog(){
+    const log=$("#sync-log"); if(!log) return;
+    if(!Sync.on){ log.textContent="未連接雲端（純本地模式）"; log.className="sync-log"; return; }
+    const t=Sync.cfg.lastSync?fmtDate(Sync.cfg.lastSync):"從未";
+    const st={ok:"✅ 成功",error:"❌ 失敗",syncing:"⏳ 進行中",none:"—"}[Sync.cfg.lastStatus]||"—";
+    log.textContent="上次同步："+t+"  ·  狀態："+st+"  ·  自動同步："+(Sync.cfg.autoSync?"開啟":"關閉");
+    log.className="sync-log "+(Sync.cfg.lastStatus||"none");
+  }
+  function initSettingsPage(){
+    $("#sync-url").value=Sync.cfg.url||"";
+    $("#sync-auto").checked=!!Sync.cfg.autoSync;
+    $("#script-code").value=APPS_SCRIPT_CODE;
+    updateSyncLog();
+    renderLocationList();
+  }
+  function saveSyncSettings(){
+    Sync.cfg.url=$("#sync-url").value.trim();
+    Sync.cfg.autoSync=$("#sync-auto").checked;
+    Sync.save();
+    setSyncStatus(Sync.on?(Sync.cfg.lastStatus||"none"):"none");
+    updateSyncLog();
+    toast(Sync.on?(Sync.cfg.autoSync?"已開啟雲端自動同步":"已儲存（手動同步模式）"):"已切換為純本地模式","good");
+  }
+
+  /* ---------- Location management ---------- */
+  function renderLocationList(){
+    const list = $("#loc-list");
+    if(!list) return;
+    const locs = Locations.all();
+    if(locs.length===0){ list.innerHTML = '<div class="empty" style="padding:20px"><span class="ico">📍</span>尚無儲存位置</div>'; return; }
+    list.innerHTML = locs.map((loc,i)=>{
+      const count = db.items.filter(it=>it.cat===loc).length;
+      return `<div class="loc-row" data-loc="${esc(loc)}">
+        <span class="loc-ico">📍</span>
+        <span class="loc-name">${esc(loc)}</span>
+        <span class="loc-count">${count} 項物料</span>
+        <div class="loc-actions">
+          <button class="btn btn-outline btn-sm" data-loc-rename="${esc(loc)}">重新命名</button>
+          <button class="btn btn-danger btn-sm" data-loc-delete="${esc(loc)}">刪除</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  function addLocation(){
+    const input = $("#loc-new-name");
+    const name = input.value.trim();
+    if(!name){ toast("請輸入位置名稱","bad"); return; }
+    const r = Locations.add(name);
+    if(!r.ok){ toast(r.msg,"bad"); return; }
+    input.value = "";
+    renderLocationList();
+    refreshLocationDropdowns();
+    toast("已新增位置「"+name+"」","good");
+  }
+  function renameLocation(oldName){
+    const newName = prompt("將「"+oldName+"」重新命名為：", oldName);
+    if(newName===null) return;
+    const r = Locations.rename(oldName, newName);
+    if(!r.ok){ toast(r.msg,"bad"); return; }
+    renderLocationList();
+    refreshLocationDropdowns();
+    renderItems();
+    toast("已重新命名為「"+newName+"」","good");
+  }
+  function deleteLocation(name){
+    const r = Locations.remove(name);
+    if(!r.ok){
+      if(r.affected){
+        // has items -> offer to move
+        const others = Locations.all().filter(l=>l!==name);
+        if(others.length===0){ toast("無法刪除：这是唯一的位置，且仍有物料","bad"); return; }
+        confirmDialog("遷移物料", "位置「"+name+"」仍有 "+r.affected+" 項物料。\n請選擇遷移目標位置，或取消刪除。", ()=>{
+          // build a simple select prompt
+          const target = prompt("將「"+name+"」的 "+r.affected+" 項物料遷移到哪個位置？\n可選："+others.join(", "), others[0]);
+          if(!target || !others.includes(target)){ toast("已取消刪除","bad"); return; }
+          const moved = Locations.moveTo(name, target);
+          const r2 = Locations.remove(name);
+          if(r2.ok){ renderLocationList(); refreshLocationDropdowns(); renderItems(); toast("已刪除位置「"+name+"」，"+moved+" 項物料遷移至「"+target+"」","good"); }
+          else{ toast(r2.msg,"bad"); }
+        }, "遷移並刪除");
+        return;
+      }
+      toast(r.msg,"bad"); return;
+    }
+    renderLocationList();
+    refreshLocationDropdowns();
+    renderItems();
+    toast("已刪除位置「"+name+"」","good");
+  }
+
+  /* ---------- Seeding demo data ---------- */
+  function seedIfEmpty(){
+    if(db.items.length>0) return;
+    const now = Date.now();
+    const demo = [
+      {name:"耶加雪菲咖啡豆",cat:"吧台",unit:"kg",stock:8.5,min:3,supplier:"豆豆貿易"},
+      {name:"巴西山多士咖啡豆",cat:"吧台",unit:"kg",stock:2.2,min:3,supplier:"豆豆貿易"},
+      {name:"鮮奶",cat:"冰箱",unit:"L",stock:18,min:10,supplier:"牧場直送"},
+      {name:"燕麥奶",cat:"冰箱",unit:"L",stock:4,min:6,supplier:"植物奶公司"},
+      {name:"二砂糖",cat:"倉庫",unit:"kg",stock:5,min:2,supplier:"烘焙材料行"},
+      {name:"焦糖糖漿",cat:"吧台",unit:"瓶",stock:3,min:4,supplier:"糖漿批發"},
+      {name:"12oz 外帶杯",cat:"倉庫",unit:"個",stock:850,min:300,supplier:"包材行"},
+      {name:"16oz 外帶杯",cat:"倉庫",unit:"個",stock:280,min:300,supplier:"包材行"},
+      {name:"杯蓋",cat:"倉庫",unit:"個",stock:120,min:300,supplier:"包材行"},
+      {name:"濾紙",cat:"倉庫",unit:"包",stock:6,min:3,supplier:"包材行"},
+      {name:"伯爵紅茶",cat:"吧台",unit:"kg",stock:1.2,min:1,supplier:"茶業行"}
+    ];
+    demo.forEach(d=>{
+      db.items.push(Object.assign({id:uid()}, d, {
+        stock:Number(d.stock), min:Number(d.min)
+      }));
+    });
+    // a few transactions
+    db.txs.push({id:uid(),itemId:db.items[0].id,type:"in",qty:10,before:0,after:10,note:"開店進貨",ts:now-86400000*5});
+    db.txs.push({id:uid(),itemId:db.items[0].id,type:"out",qty:1.5,before:10,after:8.5,note:"營業消耗",ts:now-86400000*2});
+    db.txs.push({id:uid(),itemId:db.items[2].id,type:"in",qty:20,before:0,after:20,note:"每日進貨",ts:now-86400000*3});
+    db.txs.push({id:uid(),itemId:db.items[2].id,type:"out",qty:2,before:20,after:18,note:"營業消耗",ts:now-86400000});
+    db.txs.push({id:uid(),itemId:db.items[7].id,type:"out",qty:120,before:400,after:280,note:"週末尖峰",ts:now-3600000*8});
+    Store.commit();
+  }
+
+  /* ---------- Navigation ---------- */
+  function go(page){
+    $$(".page").forEach(p=>p.classList.remove("active"));
+    $("#page-"+page).classList.add("active");
+    $$("#nav button").forEach(b=>b.classList.toggle("active", b.dataset.page===page));
+    if(page==="dashboard") renderDashboard();
+    if(page==="items"){ populatePOSuppliers(); renderItems(); }
+    if(page==="stock") initStockPage();
+    if(page==="history") renderHistory();
+    if(page==="alerts") renderAlerts();
+    if(page==="settings") initSettingsPage();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+
+  /* ---------- Dashboard ---------- */
+  function renderDashboard(){
+    const items = db.items;
+    const lowCount = items.filter(i=> i.stock <= i.min).length;
+    const outCount = items.filter(i=> i.stock <= 0).length;
+    const cats = new Set(items.map(i=>i.cat)).size;
+
+    $("#stats").innerHTML = `
+      <div class="stat"><span class="label">物料品項</span><span class="value">${items.length}<small>項 / ${cats} 儲存位置</small></span><span class="hint">店內總品項數</span></div>
+      <div class="stat ${outCount?'bad':lowCount?'warn':''}"><span class="label">庫存預警</span><span class="value">${lowCount}<small>項</small></span><span class="hint">${outCount?`其中 ${outCount} 項已缺貨`:'低於安全庫存'}</span></div>
+      <div class="stat"><span class="label">儲存位置</span><span class="value">${cats}<small>處</small></span><span class="hint">已使用的存放位置</span></div>
+      <div class="stat"><span class="label">異動紀錄</span><span class="value">${db.txs.length}<small>筆</small></span><span class="hint">累計入出庫次數</span></div>
+    `;
+
+    // alerts preview
+    const lows = items.filter(i=> i.stock <= i.min).sort((a,b)=> (a.stock/a.min)-(b.stock/b.min));
+    const alertHtml = lows.length ? lows.slice(0,4).map(i=>{
+      const out = i.stock<=0;
+      return `<div class="alert-item ${out?'crit':''}">
+        <span class="ico">${out?'⛔':'⚠️'}</span>
+        <div class="info"><div class="n">${esc(i.name)}</div><div class="s">現存 ${i.stock} ${i.unit} · 安全庫存 ${i.min} ${i.unit}</div></div>
+        <button class="btn btn-primary btn-sm restock" data-stock-item="${i.id}">補貨</button>
+      </div>`;
+    }).join("") : `<div class="empty"><span class="ico">✅</span>所有物料庫存充足，無需補貨</div>`;
+    $("#dash-alerts").innerHTML = alertHtml;
+
+    // recent
+    const recent = [...db.txs].sort((a,b)=>b.ts-a.ts).slice(0,6);
+    const recentHtml = recent.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>時間</th><th>類型</th><th>物料</th><th>數量</th><th>餘量</th></tr></thead>
+      <tbody>${recent.map(t=>{
+        const it = db.items.find(x=>x.id===t.itemId);
+        return `<tr><td>${fmtDate(t.ts)}</td><td><span class="badge ${t.type}">${typeLabel(t.type)}</span></td>
+          <td>${it?esc(it.name):'<i>已刪除</i>'}</td><td>${t.qty}</td><td>${t.after} ${it?it.unit:''}</td></tr>`;
+      }).join("")}</tbody></table></div>` : `<div class="empty"><span class="ico">📋</span>尚無異動紀錄</div>`;
+    $("#dash-recent").innerHTML = recentHtml;
+  }
+
+  function typeLabel(t){return t==="in"?"入庫":t==="out"?"出庫":"調整";}
+
+  /* ---------- Items ---------- */
+  let itemSort = {key:"name",dir:1};
+  function renderItems(){
+    const q = ($("#item-search").value||"").trim().toLowerCase();
+    const catF = $("#item-cat-filter").value;
+    let list = db.items.filter(i=>{
+      const okQ = !q || i.name.toLowerCase().includes(q) || (i.supplier||"").toLowerCase().includes(q);
+      const okC = !catF || i.cat===catF;
+      return okQ && okC;
+    });
+    list.sort((a,b)=>{
+      let x=a[itemSort.key],y=b[itemSort.key];
+      if(typeof x==="string"){x=x.toLowerCase();y=y.toLowerCase();}
+      return (x>y?1:x<y?-1:0)*itemSort.dir;
+    });
+
+    // arrows
+    $$("#items-table th.sortable").forEach(th=>{
+      const a = th.querySelector(".arrow");
+      a.textContent = th.dataset.sort===itemSort.key ? (itemSort.dir>0?"▲":"▼") : "";
+    });
+
+    const body = list.length ? list.map(i=>{
+      const cls = i.stock<=0?"out":i.stock<=i.min?"low":"";
+      return `<tr>
+        <td><strong>${esc(i.name)}</strong></td>
+        <td><span class="cat-tag">${i.cat}</span></td>
+        <td><span class="stock-cell ${cls}">${i.stock} ${i.unit}</span></td>
+        <td>${i.min} ${i.unit}</td>
+        <td>${esc(i.supplier||"—")}</td>
+        <td><div class="row-actions">
+          <button class="btn btn-ghost btn-sm" data-stock-item="${i.id}">入出庫</button>
+          <button class="btn btn-outline btn-sm" data-edit-item="${i.id}">編輯</button>
+          <button class="btn btn-danger btn-sm" data-del-item="${i.id}">刪除</button>
+        </div></td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="6"><div class="empty"><span class="ico">📦</span>尚無物料，點右上「新增物料」開始管理</div></td></tr>`;
+    $("#items-tbody").innerHTML = body;
+  }
+
+  function openItemModal(id){
+    const cats = $("#item-cat");
+    cats.innerHTML = Locations.all().map(c=>`<option>${c}</option>`).join("");
+    if(id){
+      const it = db.items.find(x=>x.id===id);
+      $("#item-modal-title").textContent = "編輯物料";
+      $("#item-id").value = it.id;
+      $("#item-name").value = it.name;
+      cats.value = it.cat;
+      $("#item-unit").value = it.unit;
+      $("#item-stock").value = it.stock;
+      $("#item-min").value = it.min;
+      $("#item-supplier").value = it.supplier||"";
+    }else{
+      $("#item-modal-title").textContent = "新增物料";
+      ["item-id","item-name"].forEach(s=>$( "#"+s).value="");
+      $("#item-stock").value=0; $("#item-min").value=""; $("#item-supplier").value="";
+      cats.value = Locations.all()[0]||"";
+    }
+    $("#item-overlay").classList.add("show");
+  }
+
+  function saveItem(){
+    const name = $("#item-name").value.trim();
+    const min = parseFloat($("#item-min").value);
+    if(!name){ toast("請輸入物料名稱","bad"); return; }
+    if(isNaN(min) || min<0){ toast("請輸入有效的安全庫存","bad"); return; }
+    const id = $("#item-id").value;
+    const data = {
+      name,
+      cat: $("#item-cat").value,
+      unit: $("#item-unit").value,
+      min: min,
+      supplier: $("#item-supplier").value.trim()
+    };
+    if(id){
+      const it = db.items.find(x=>x.id===id);
+      Object.assign(it,data);
+      toast("已更新物料","good");
+    }else{
+      const stock = parseFloat($("#item-stock").value)||0;
+      const nid = uid();
+      db.items.push(Object.assign({id:nid,stock},data));
+      if(stock>0){
+        db.txs.push({id:uid(),itemId:nid,type:"in",qty:stock,before:0,after:stock,note:"初始建立",ts:Date.now()});
+      }
+      toast("已新增物料","good");
+    }
+    Store.commit();
+    closeOverlay("item-overlay");
+    renderItems();
+  }
+
+  function deleteItem(id){
+    const it = db.items.find(x=>x.id===id);
+    if(!it) return;
+    confirmDialog("刪除物料",`確定要刪除「${it.name}」嗎？相關異動紀錄將保留但顯示為「已刪除」。`,()=>{
+      db.items = db.items.filter(x=>x.id!==id);
+      Store.commit();
+      renderItems();
+      toast("已刪除物料","good");
+    });
+  }
+
+  /* ---------- Stock operations ---------- */
+  let txType = "in";
+  function initStockPage(){
+    const locSel = $("#tx-location");
+    const prevLoc = locSel.value;
+    locSel.innerHTML = `<option value="">— 全部位置 —</option>` + Locations.all().map(l=>`<option>${esc(l)}</option>`).join("");
+    if(prevLoc && [...locSel.options].some(o=>o.value===prevLoc)) locSel.value = prevLoc;
+    locSel.value = "";
+    populateTxItems("");
+    if(!$("#tx-date").value) $("#tx-date").value = todayStr();
+    updateTxPreview();
+  }
+  function populateTxItems(loc){
+    const sel = $("#tx-item");
+    const filtered = loc ? db.items.filter(i=>i.cat===loc) : db.items;
+    sel.innerHTML = `<option value="">— 請選擇物料 —</option>` + filtered.map(i=>
+      `<option value="${i.id}">${esc(i.name)} （現存 ${i.stock} ${i.unit}）</option>`).join("");
+  }
+  function setTxType(t){
+    txType = t;
+    $$("#type-tabs .type-tab").forEach(b=> b.classList.toggle("active", b.dataset.type===t));
+    updateTxPreview();
+  }
+  function updateTxPreview(){
+    const id = $("#tx-item").value;
+    const qty = parseFloat($("#tx-qty").value);
+    const p = $("#tx-preview");
+    if(!id){ p.textContent = "請選擇物料並輸入數量"; return; }
+    const it = db.items.find(x=>x.id===id);
+    if(!it){ p.textContent = "—"; return; }
+    if(isNaN(qty)||qty<=0){ p.textContent = `目前庫存：${it.stock} ${it.unit} · 請輸入數量`; return; }
+    let after = it.stock;
+    let verb = txType==="in"?`入庫 +${qty}`:txType==="out"?`出庫 -${qty}`:`調整為 ${qty}`;
+    if(txType==="in") after = +(it.stock+qty).toFixed(3);
+    else if(txType==="out") after = +(it.stock-qty).toFixed(3);
+    else after = qty;
+    const warn = after<0?" · ⚠️ 庫存將不足":"" ;
+    const lowWarn = (after<=it.min && after>0)?" · 低於安全庫存":warn;
+    p.innerHTML = `<strong>${esc(it.name)}</strong>：${it.stock} ${it.unit} → <strong>${after} ${it.unit}</strong>（${verb}${lowWarn}）`;
+  }
+  function submitTx(){
+    const id = $("#tx-item").value;
+    const qty = parseFloat($("#tx-qty").value);
+    const note = $("#tx-note").value.trim();
+    const dateStr = $("#tx-date").value || todayStr();
+    if(!id){ toast("請選擇物料","bad"); return; }
+    if(isNaN(qty)||qty<=0){ toast("請輸入大於 0 的數量","bad"); return; }
+    const it = db.items.find(x=>x.id===id);
+    const before = it.stock;
+    let after;
+    if(txType==="in") after = +(before+qty).toFixed(3);
+    else if(txType==="out") after = +(before-qty).toFixed(3);
+    else after = +qty.toFixed(3);
+    if(after<0){ toast("出庫數量超過現有庫存","bad"); return; }
+    it.stock = after;
+    const ts = new Date(dateStr+"T"+new Date().toTimeString().slice(0,8)).getTime();
+    db.txs.push({id:uid(),itemId:id,type:txType,qty:+qty.toFixed(3),before,after,note,ts});
+    Store.commit();
+    $("#tx-qty").value=""; $("#tx-note").value="";
+    toast(`${typeLabel(txType)}成功！${it.name} 餘量：${after} ${it.unit}`,"good");
+    initStockPage();
+  }
+
+  /* ---------- History ---------- */
+  function renderHistory(){
+    const q = ($("#hist-search").value||"").trim().toLowerCase();
+    const tF = $("#hist-type-filter").value;
+    let list = db.txs.filter(t=>{
+      const it = db.items.find(x=>x.id===t.itemId);
+      const text = (it?it.name:"")+" "+(t.note||"");
+      const okQ = !q || text.toLowerCase().includes(q);
+      const okT = !tF || t.type===tF;
+      return okQ && okT;
+    }).sort((a,b)=>b.ts-a.ts);
+    const body = list.length ? list.map(t=>{
+      const it = db.items.find(x=>x.id===t.itemId);
+      const sign = t.type==="in"?"+":t.type==="out"?"−":"= ";
+      return `<tr>
+        <td>${fmtDate(t.ts)}</td>
+        <td><span class="badge ${t.type}">${typeLabel(t.type)}</span></td>
+        <td>${it?esc(it.name):'<i style="color:#b3422b">已刪除</i>'}</td>
+        <td><strong>${sign}${t.qty}</strong></td>
+        <td>${t.before} ${it?it.unit:''}</td>
+        <td><strong>${t.after}</strong> ${it?it.unit:''}</td>
+        <td>${esc(t.note||"—")}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="7"><div class="empty"><span class="ico">📜</span>尚無異動紀錄</div></td></tr>`;
+    $("#hist-tbody").innerHTML = body;
+  }
+
+  /* ---------- Alerts ---------- */
+  function renderAlerts(){
+    const lows = db.items.filter(i=> i.stock <= i.min).sort((a,b)=> (a.stock/a.min)-(b.stock/b.min));
+    const html = lows.length ? lows.map(i=>{
+      const out = i.stock<=0;
+      return `<div class="alert-item ${out?'crit':''}">
+        <span class="ico">${out?'⛔':'⚠️'}</span>
+        <div class="info">
+          <div class="n">${esc(i.name)} <span class="cat-tag" style="margin-left:6px">${i.cat}</span></div>
+          <div class="s">現存 <strong style="color:${out?'var(--bad)':'var(--warn)'}">${i.stock} ${i.unit}</strong> · 安全庫存 ${i.min} ${i.unit} ${i.supplier?('· 供應商：'+esc(i.supplier)):''}</div>
+        </div>
+        <button class="btn btn-primary btn-sm restock" data-stock-item="${i.id}">立即補貨</button>
+      </div>`;
+    }).join("") : `<div class="panel"><div class="empty"><span class="ico">✅</span>太棒了！所有物料庫存充足，無需補貨。</div></div>`;
+    $("#alerts-list").innerHTML = html;
+  }
+
+  /* ---------- Purchase order export ---------- */
+  function getSupplierName(it){ return it.supplier && it.supplier.trim() ? it.supplier.trim() : "（未指定供應商）"; }
+  function populatePOSuppliers(){
+    const poSel = $("#po-supplier");
+    const prev = poSel.value;
+    const suppliers = [...new Set(db.items.map(getSupplierName))].sort();
+    poSel.innerHTML = `<option value="">— 選擇供應商 —</option>` + suppliers.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
+    if(prev && [...poSel.options].some(o=>o.value===prev)) poSel.value = prev;
+  }
+  function buildPOData(supplier){
+    const items = db.items.filter(it=> getSupplierName(it)===supplier);
+    const dateStr = todayStr();
+    return {
+      supplier: supplier,
+      date: dateStr,
+      items: items.map(it=>({ name:it.name, location:it.cat, stock:it.stock, min:it.min, unit:it.unit,
+        need: Math.max(0, +(it.min - it.stock).toFixed(3)) }))
+    };
+  }
+  async function exportPOtoSheets(){
+    const supplier = $("#po-supplier").value;
+    if(!supplier){ toast("請先選擇供應商","bad"); return; }
+    if(!Sync.on){ toast("請先在「設定」頁連接 Google Sheets","bad"); return; }
+    const poData = buildPOData(supplier);
+    if(poData.items.length===0){ toast("此供應商沒有物料","bad"); return; }
+    const btn = $("#po-export-btn");
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = "匯出中…";
+    try{
+      const res = await fetch(Sync.cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"savePO",data:poData})});
+      const j = await res.json();
+      if(j.ok){ toast("✅ 已建立採購單分頁「"+j.sheetName+"」","good"); }
+      else{ toast("匯出失敗："+(j.error||"未知錯誤")+"（若剛更新 Apps Script 代碼，請重新部署）","bad"); }
+    }catch(e){ toast("匯出失敗："+e.message,"bad"); }
+    btn.disabled = false; btn.textContent = orig;
+  }
+  function generatePOPreview(){
+    const supplier = $("#po-supplier").value;
+    if(!supplier){ toast("請先選擇供應商","bad"); return; }
+    const poData = buildPOData(supplier);
+    if(poData.items.length===0){ toast("此供應商沒有物料","bad"); return; }
+    const dateStr = poData.date;
+    let needCount = 0;
+    const rows = poData.items.map((it,idx)=>{
+      if(it.need>0) needCount++;
+      const needCell = it.need>0 ? `<strong>${it.need} ${it.unit}</strong>` : "—";
+      return `<tr class="${it.need>0?'need':''}">
+          <td class="c">${idx+1}</td>
+          <td>${esc(it.name)}</td>
+          <td>${esc(it.location)}</td>
+          <td class="r">${it.stock} ${it.unit}</td>
+          <td class="r">${it.min} ${it.unit}</td>
+          <td class="r">${needCell}</td>
+        </tr>`;
+    }).join("");
+    const body = `<section class="po">
+        <div class="po-head">
+          <div class="po-brand"><img src="data:image/png;base64,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"> Pause it Yoho</div>
+          <div class="po-title">供應商採購單</div>
+          <div class="po-meta">
+            <span>供應商：<strong>${esc(supplier)}</strong></span>
+            <span>日期：${dateStr}</span>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th class="c">#</th><th>物料名稱</th><th>儲存位置</th><th class="r">當前庫存</th><th class="r">安全庫存</th><th class="r">建議採購量</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="po-sum">共 ${poData.items.length} 項，其中 <strong>${needCount}</strong> 項需採購</div>
+        <div class="po-sign">
+          <span>採購人：____________</span>
+          <span>日期：____________</span>
+          <span>供應商簽收：____________</span>
+        </div>
+      </section>`;
+    const poHtml = `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8">
+      <title>採購單 — ${esc(supplier)} — ${dateStr}</title>
+      <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:"PingFang TC","Microsoft JhengHei",sans-serif;color:#2b1d14;background:#fff;padding:24px;font-size:13px}
+        .po{margin-bottom:30px;border:1.5px solid #6f4e37;border-radius:10px;overflow:hidden;page-break-inside:avoid}
+        .po-head{background:linear-gradient(135deg,#3b2417,#6f4e37);color:#faf5ee;padding:16px 20px}
+        .po-brand{font-size:20px;font-weight:800;letter-spacing:.5px}
+        .po-brand img{height:26px;vertical-align:middle;margin-right:4px}
+        .po-title{font-size:15px;margin-top:2px;opacity:.92}
+        .po-meta{display:flex;gap:24px;margin-top:8px;font-size:13px;flex-wrap:wrap}
+        table{width:100%;border-collapse:collapse}
+        thead th{background:#f5ede0;color:#3b2417;padding:9px 10px;font-size:12px;border-bottom:2px solid #e0d4c2;text-align:left}
+        thead th.c,td.c{text-align:center}
+        thead th.r,td.r{text-align:right}
+        tbody td{padding:8px 10px;border-bottom:1px solid #eee}
+        tbody tr.need{background:#fbf0db}
+        tbody tr.need td:last-child{color:#b3422b}
+        .po-sum{padding:10px 20px;font-size:13px;color:#6f4e37;background:#faf5ee;border-top:1px solid #e0d4c2}
+        .po-sign{display:flex;justify-content:space-between;gap:16px;padding:14px 20px;font-size:13px;color:#8a7766;flex-wrap:wrap}
+        @media print{body{padding:0}.po{page-break-inside:avoid}}
+      </style></head><body>${body}
+      <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
+    </body></html>`;
+    const w = window.open("","_blank");
+    if(!w){ toast("請允許彈出視窗以預覽採購單","bad"); return; }
+    w.document.open(); w.document.write(poHtml); w.document.close();
+    toast("已開啟採購單，可列印或存為 PDF","good");
+  }
+
+  /* ---------- Import / Export ---------- */
+  function exportData(){
+    const blob = new Blob([JSON.stringify(db,null,2)],{type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `PauseitYoho庫存備份_${todayStr()}.json`;
+    a.click();
+    toast("已匯出備份檔","good");
+  }
+  function importData(file){
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const data = JSON.parse(e.target.result);
+        if(!data.items || !data.txs) throw new Error("格式錯誤");
+        confirmDialog("匯入資料",`將覆寫現有資料（${db.items.length} 項物料、${db.txs.length} 筆紀錄），改為匯入檔內容（${data.items.length} 項物料、${data.txs.length} 筆紀錄）。確定繼續？`,()=>{
+          db = data; Store._d = db; Store.commit();
+          renderAll();
+          toast("匯入成功","good");
+        },"確認匯入");
+      }catch(err){ toast("檔案格式錯誤，匯入失敗","bad"); }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- Helpers ---------- */
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function closeOverlay(id){ $("#"+id).classList.remove("show"); }
+  function renderAll(){ renderDashboard(); renderItems(); renderHistory(); renderAlerts(); initStockPage(); }
+
+  /* ---------- Init filters ---------- */
+  function refreshLocationDropdowns(){
+    const opts = `<option value="">全部儲存位置</option>` + Locations.all().map(c=>`<option>${esc(c)}</option>`).join("");
+    const filter = $("#item-cat-filter");
+    const prev = filter.value;
+    filter.innerHTML = opts;
+    if(prev && [...filter.options].some(o=>o.value===prev)) filter.value = prev;
+  }
+  refreshLocationDropdowns();
+
+  /* ---------- Event wiring ---------- */
+  $$("#nav button").forEach(b=> b.addEventListener("click",()=> go(b.dataset.page)));
+  $$("[data-go]").forEach(b=> b.addEventListener("click",()=> go(b.dataset.go)));
+
+  // global click delegation
+  document.addEventListener("click",e=>{
+    const s = e.target.closest("[data-stock-item],[data-edit-item],[data-del-item],[data-close]");
+    if(!s) return;
+    if(s.dataset.close){ closeOverlay(s.dataset.close); return; }
+    if(s.dataset.stockItem){ go("stock"); const it=db.items.find(x=>x.id===s.dataset.stockItem); if(it){ $("#tx-location").value=it.cat; populateTxItems(it.cat); $("#tx-item").value=s.dataset.stockItem; } setTxType("in"); updateTxPreview(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+    if(s.dataset.editItem){ openItemModal(s.dataset.editItem); return; }
+    if(s.dataset.delItem){ deleteItem(s.dataset.delItem); return; }
+  });
+
+  $("#add-item-btn").addEventListener("click",()=> openItemModal());
+  $("#po-export-btn").addEventListener("click",exportPOtoSheets);
+  $("#po-preview-btn").addEventListener("click",generatePOPreview);
+  $("#item-save").addEventListener("click",saveItem);
+  $("#confirm-ok").addEventListener("click",()=>{ if(confirmCb) confirmCb(); closeOverlay("confirm-overlay"); confirmCb=null; });
+
+  $$("#type-tabs .type-tab").forEach(b=> b.addEventListener("click",()=> setTxType(b.dataset.type)));
+  ["tx-item","tx-qty"].forEach(id=> $("#"+id).addEventListener("input",updateTxPreview));
+  $("#tx-location").addEventListener("change",()=>{ populateTxItems($("#tx-location").value); $("#tx-item").value=""; updateTxPreview(); });
+  $("#tx-submit").addEventListener("click",submitTx);
+
+  $("#item-search").addEventListener("input",renderItems);
+  $("#item-cat-filter").addEventListener("change",renderItems);
+  $("#hist-search").addEventListener("input",renderHistory);
+  $("#hist-type-filter").addEventListener("change",renderHistory);
+
+  $$("#items-table th.sortable").forEach(th=> th.addEventListener("click",()=>{
+    const k = th.dataset.sort;
+    if(itemSort.key===k) itemSort.dir*=-1; else { itemSort.key=k; itemSort.dir=1; }
+    renderItems();
+  }));
+
+  // location management events
+  $("#loc-add-btn").addEventListener("click",addLocation);
+  $("#loc-new-name").addEventListener("keydown",e=>{ if(e.key==="Enter") addLocation(); });
+  document.addEventListener("click",e=>{
+    const rn = e.target.closest("[data-loc-rename]");
+    const rd = e.target.closest("[data-loc-delete]");
+    if(rn){ renameLocation(rn.dataset.locRename); return; }
+    if(rd){ deleteLocation(rd.dataset.locDelete); return; }
+  });
+
+  $("#export-btn").addEventListener("click",exportData);
+  $("#import-btn").addEventListener("click",()=> $("#import-file").click());
+  $("#import-file").addEventListener("change",e=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
+
+  // settings page events
+  $("#sync-save").addEventListener("click",saveSyncSettings);
+  $("#sync-test").addEventListener("click",testConnection);
+  $("#sync-upload-now").addEventListener("click",()=>syncUp(false));
+  $("#sync-download-now").addEventListener("click",()=>syncDown(false));
+  $("#copy-script").addEventListener("click",()=>{
+    const ta=$("#script-code"); ta.select(); ta.setSelectionRange(0,99999);
+    try{ document.execCommand("copy"); toast("已複製 Apps Script 代碼，貼到編輯器即可","good"); }
+    catch(err){ toast("請手動選取代碼框內容複製","bad"); }
+  });
+  $("#export-btn2").addEventListener("click",exportData);
+  $("#import-btn2").addEventListener("click",()=> $("#import-file2").click());
+  $("#import-file2").addEventListener("change",e=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
+
+  // close overlay on backdrop click
+  $$(".overlay").forEach(o=> o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
+
+  // Enter to save item
+  $("#item-overlay").addEventListener("keydown",e=>{ if(e.key==="Enter" && e.target.tagName==="INPUT") saveItem(); });
+
+  /* ---------- Boot ---------- */
+  document.querySelectorAll(".logo-img").forEach(function(img){ img.src = LOGO_DATA; });
+  Sync.load();
+  setSyncStatus(Sync.on?(Sync.cfg.lastStatus||"none"):"none");
+  if(Sync.on && Sync.cfg.autoSync){
+    renderDashboard();
+    syncDown(true).then(function(ok){
+      if(ok && db.items.length===0 && db.txs.length===0){ seedIfEmpty(); syncUp(true); }
+      renderAll();
+    });
+  } else {
+    seedIfEmpty();
+    renderDashboard();
+  }
+})();
+</script>
+</body>
+</html>
