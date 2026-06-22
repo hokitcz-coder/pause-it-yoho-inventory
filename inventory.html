@@ -1402,6 +1402,13 @@ function savePO(data){
   } else {
     seedIfEmpty();
     renderDashboard();
+    // 網址已固定，啟動時自動測試連線狀態
+    fetch(FIXED_SYNC_URL+"?action=getAll&t="+Date.now()).then(r=>r.json()).then(j=>{
+      if(j && j.items!==undefined){ Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok"); }
+      else { Sync.cfg.lastStatus="error"; Sync.save(); setSyncStatus("error"); }
+    }).catch(()=>{
+      Sync.cfg.lastStatus="error"; Sync.save(); setSyncStatus("error");
+    });
   }
 })();
 </script>
