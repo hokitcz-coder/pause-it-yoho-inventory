@@ -1336,8 +1336,7 @@
   Sync.cfg.autoSync = true;
   Sync.save();
   setSyncStatus("syncing");
-  // 先渲染本地資料（避免空白），再嘗試從雲端下載最新
-  seedIfEmpty();
+  // 本地資料保持空白，完全從雲端下載
   renderDashboard();
   var loadingStatus = document.getElementById("loading-status");
   var loadingOverlay = document.getElementById("loading-overlay");
@@ -1353,7 +1352,6 @@
   setTimeout(function(){ finishBoot("連線逾時，使用本地資料"); }, 8000);
   syncDown(true).then(function(ok){
     if(ok){
-      if(db.items.length===0 && db.txs.length===0){ seedIfEmpty(); syncUp(true); }
       renderAll();
       finishBoot("同步完成");
     } else {
