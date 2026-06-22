@@ -727,8 +727,8 @@ function savePO(data){
 }`;
 
   const Sync = {
-    cfg:{url:FIXED_SYNC_URL,autoSync:false,lastSync:null,lastStatus:"none"},
-    load(){ try{ this.cfg=Object.assign({url:FIXED_SYNC_URL,autoSync:false,lastSync:null,lastStatus:"none"}, JSON.parse(localStorage.getItem(SYNC_KEY))); this.cfg.url=FIXED_SYNC_URL; }catch(e){ this.cfg.url=FIXED_SYNC_URL; } },
+    cfg:{url:FIXED_SYNC_URL,autoSync:true,lastSync:null,lastStatus:"none"},
+    load(){ try{ this.cfg=Object.assign({url:FIXED_SYNC_URL,autoSync:true,lastSync:null,lastStatus:"none"}, JSON.parse(localStorage.getItem(SYNC_KEY))); this.cfg.url=FIXED_SYNC_URL; }catch(e){ this.cfg.url=FIXED_SYNC_URL; } },
     save(){ localStorage.setItem(SYNC_KEY, JSON.stringify(this.cfg)); },
     get on(){ return !!this.cfg.url; }
   };
