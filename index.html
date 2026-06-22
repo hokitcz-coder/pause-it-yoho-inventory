@@ -453,22 +453,6 @@
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h3>📋 Google Sheets 連線教學（只需做一次）</h3>
-        <div class="sp"><button class="btn btn-ghost btn-sm" id="copy-script">📋 複製代碼</button></div>
-      </div>
-      <ol class="step-list">
-        <li>開啟 <a href="https://sheets.new" target="_blank" style="color:var(--coffee)">sheets.new</a> 建立一張空白 Google 試算表（會自動存在你的 Google 雲端硬碟）。</li>
-        <li>在試算表選單點 <code>擴充功能 → Apps Script</code>，開啟程式碼編輯器。</li>
-        <li>把編輯器裡原有的程式碼<strong>全部刪除</strong>，貼上下方框內的代碼，按 <code>Ctrl/Cmd + S</code> 儲存。</li>
-        <li>點右上角 <code>部署 → 新增部署作業</code>，齒輪選 <strong>網路應用程式</strong>。</li>
-        <li>「執行身分」選<strong>自己</strong>；「具有存取權的使用者」選<strong>任何人</strong>（讓 app 能呼叫），點「部署」。</li>
-        <li>首次部署需<strong>授權</strong>：點「允許」→ 選你的 Google 帳號 → 進階 →「前往未命名的專案」→ 允許。</li>
-        <li>複製出現的<strong>網址</strong>（結尾是 <code>/exec</code>），貼到上方欄位，點「儲存設定」再「測試連線」即可。</li>
-      </ol>
-      <textarea class="code-box" id="script-code" readonly></textarea>
-    </div>
-
-    <div class="panel">
       <div class="panel-head"><h3>📍 儲存位置管理</h3></div>
       <div class="info-note">管理物料的儲存位置選項。新增、重新命名或刪除位置，所有下拉選單會即時更新。</div>
       <div id="loc-list" style="margin-bottom:14px"></div>
@@ -650,82 +634,6 @@
   /* ============ Cloud sync (Google Sheets via Apps Script) ============ */
   const SYNC_KEY = "cafe_inventory_sync_cfg";
   const FIXED_SYNC_URL = "https://script.google.com/macros/s/AKfycbztkB0GGBbuPy8AvHSuOYV5-KW4j9Qqoxw23DJqOzFAATQvNyhYfCjCvZDkC-H4mXbO/exec";
-  const APPS_SCRIPT_CODE =
-`/* Pause it Yoho 庫存管理 — Google Apps Script 後端
-   貼到 Apps Script 編輯器後部署為「網路應用程式」即可 */
-const SHEET_ITEMS='Items', SHEET_TXS='Transactions';
-const ITEM_HEADERS=['id','name','cat','unit','stock','min','price','supplier'];
-const TX_HEADERS=['id','itemId','type','qty','before','after','note','ts'];
-
-function getSheet(name, headers){
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
-  let sheet=ss.getSheetByName(name);
-  if(!sheet){ sheet=ss.insertSheet(name); sheet.appendRow(headers); sheet.setFrozenRows(1); }
-  return sheet;
-}
-function readRows(sheet){
-  const last=sheet.getLastRow(); if(last<2) return [];
-  return sheet.getRange(2,1,last-1,sheet.getLastColumn()).getValues();
-}
-function clearData(sheet){
-  const last=sheet.getLastRow(); if(last>1) sheet.deleteRows(2,last-1);
-}
-function json(obj){ return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
-
-function doGet(e){
-  const action=(e&&e.parameter&&e.parameter.action)||'getAll';
-  if(action==='getAll') return json(getAll());
-  return json({error:'unknown action: '+action});
-}
-function doPost(e){
-  let body; try{ body=JSON.parse(e.postData.contents); }catch(err){ return json({error:'invalid JSON'}); }
-  if(body.action==='saveAll') return json(saveAll(body.data));
-  if(body.action==='savePO') return json(savePO(body.data));
-  return json({error:'unknown action: '+body.action});
-}
-function getAll(){
-  const itemSheet=getSheet(SHEET_ITEMS,ITEM_HEADERS);
-  const txSheet=getSheet(SHEET_TXS,TX_HEADERS);
-  const items=readRows(itemSheet).map(function(r){return{id:r[0],name:r[1],cat:r[2],unit:r[3],stock:Number(r[4])||0,min:Number(r[5])||0,price:Number(r[6])||0,supplier:r[7]||''};});
-  const txs=readRows(txSheet).map(function(r){return{id:r[0],itemId:r[1],type:r[2],qty:Number(r[3])||0,before:Number(r[4])||0,after:Number(r[5])||0,note:r[6]||'',ts:Number(r[7])||0};});
-  return {items:items, txs:txs, syncedAt:Date.now()};
-}
-function saveAll(data){
-  const itemSheet=getSheet(SHEET_ITEMS,ITEM_HEADERS);
-  const txSheet=getSheet(SHEET_TXS,TX_HEADERS);
-  clearData(itemSheet); clearData(txSheet);
-  (data.items||[]).forEach(function(it){ itemSheet.appendRow([it.id,it.name,it.cat,it.unit,it.stock,it.min,it.price,it.supplier||'']); });
-  (data.txs||[]).forEach(function(t){ txSheet.appendRow([t.id,t.itemId,t.type,t.qty,t.before,t.after,t.note||'',t.ts]); });
-  return {ok:true, items:(data.items||[]).length, txs:(data.txs||[]).length};
-}
-function savePO(data){
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
-  var safeName=(data.supplier||'採購單').replace(/[/\\?*:\[\]\]]/g,'');
-  var sheetName='採購單_'+safeName+'_'+data.date;
-  var existing=ss.getSheetByName(sheetName); if(existing) ss.deleteSheet(existing);
-  var sheet=ss.insertSheet(sheetName);
-  sheet.getRange(1,1).setValue('Pause it Yoho — 供應商採購單').setFontWeight('bold').setFontSize(14).setFontColor('#3b2417');
-  sheet.getRange(2,1).setValue('供應商：'+data.supplier);
-  sheet.getRange(2,4).setValue('日期：'+data.date);
-  var headers=['#','物料名稱','儲存位置','當前庫存','安全庫存','建議採購量'];
-  sheet.getRange(4,1,1,6).setValues([headers]).setFontWeight('bold').setBackground('#f5ede0').setFontColor('#3b2417');
-  var rows=(data.items||[]).map(function(it,i){return [i+1,it.name,it.location,it.stock+' '+it.unit,it.min+' '+it.unit, it.need>0 ? (it.need+' '+it.unit) : '—'];});
-  if(rows.length>0){
-    sheet.getRange(5,1,rows.length,6).setValues(rows);
-    data.items.forEach(function(it,i){ if(it.need>0){ sheet.getRange(5+i,1,1,6).setBackground('#fbf0db'); sheet.getRange(5+i,6).setFontColor('#b3422b').setFontWeight('bold'); } });
-  }
-  var sumRow=5+rows.length+1;
-  var needCount=(data.items||[]).filter(function(it){return it.need>0;}).length;
-  sheet.getRange(sumRow,1).setValue('共 '+(data.items||[]).length+' 項，其中 '+needCount+' 項需採購').setFontWeight('bold');
-  sheet.getRange(sumRow+2,1).setValue('採購人：____________');
-  sheet.getRange(sumRow+2,3).setValue('日期：____________');
-  sheet.getRange(sumRow+2,5).setValue('供應商簽收：____________');
-  sheet.setColumnWidth(1,40); sheet.setColumnWidth(2,220); sheet.setColumnWidth(3,100);
-  sheet.setColumnWidth(4,110); sheet.setColumnWidth(5,110); sheet.setColumnWidth(6,120);
-  sheet.setFrozenRows(4);
-  return {ok:true, sheetName:sheetName, url:ss.getUrl()};
-}`;
-
   const Sync = {
     cfg:{url:FIXED_SYNC_URL,autoSync:true,lastSync:null,lastStatus:"none"},
     load(){ try{ this.cfg=Object.assign({url:FIXED_SYNC_URL,autoSync:true,lastSync:null,lastStatus:"none"}, JSON.parse(localStorage.getItem(SYNC_KEY))); this.cfg.url=FIXED_SYNC_URL; }catch(e){ this.cfg.url=FIXED_SYNC_URL; } },
@@ -801,7 +709,6 @@ function savePO(data){
   function initSettingsPage(){
     $("#sync-url").value=FIXED_SYNC_URL;
     $("#sync-auto").checked=!!Sync.cfg.autoSync;
-    $("#script-code").value=APPS_SCRIPT_CODE;
     updateSyncLog();
     renderLocationList();
   }
@@ -1374,11 +1281,6 @@ function savePO(data){
   $("#sync-test").addEventListener("click",testConnection);
   $("#sync-upload-now").addEventListener("click",()=>syncUp(false));
   $("#sync-download-now").addEventListener("click",()=>syncDown(false));
-  $("#copy-script").addEventListener("click",()=>{
-    const ta=$("#script-code"); ta.select(); ta.setSelectionRange(0,99999);
-    try{ document.execCommand("copy"); toast("已複製 Apps Script 代碼，貼到編輯器即可","good"); }
-    catch(err){ toast("請手動選取代碼框內容複製","bad"); }
-  });
   $("#export-btn2").addEventListener("click",exportData);
   $("#import-btn2").addEventListener("click",()=> $("#import-file2").click());
   $("#import-file2").addEventListener("change",e=>{ if(e.target.files[0]) importData(e.target.files[0]); e.target.value=""; });
@@ -1392,24 +1294,24 @@ function savePO(data){
   /* ---------- Boot ---------- */
   document.querySelectorAll(".logo-img").forEach(function(img){ img.src = LOGO_DATA; });
   Sync.load();
-  setSyncStatus(Sync.on?(Sync.cfg.lastStatus||"none"):"none");
-  if(Sync.on && Sync.cfg.autoSync){
-    renderDashboard();
-    syncDown(true).then(function(ok){
-      if(ok && db.items.length===0 && db.txs.length===0){ seedIfEmpty(); syncUp(true); }
+  // 強制啟用自動同步
+  Sync.cfg.autoSync = true;
+  Sync.save();
+  setSyncStatus("syncing");
+  // 先渲染本地資料（避免空白），再嘗試從雲端下載最新
+  seedIfEmpty();
+  renderDashboard();
+  syncDown(true).then(function(ok){
+    if(ok){
+      // 雲端有資料且下載成功
+      if(db.items.length===0 && db.txs.length===0){ seedIfEmpty(); syncUp(true); }
       renderAll();
-    });
-  } else {
-    seedIfEmpty();
-    renderDashboard();
-    // 網址已固定，啟動時自動測試連線狀態
-    fetch(FIXED_SYNC_URL+"?action=getAll&t="+Date.now()).then(r=>r.json()).then(j=>{
-      if(j && j.items!==undefined){ Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok"); }
-      else { Sync.cfg.lastStatus="error"; Sync.save(); setSyncStatus("error"); }
-    }).catch(()=>{
+    } else {
+      // 下載失敗，保留本地資料繼續使用
       Sync.cfg.lastStatus="error"; Sync.save(); setSyncStatus("error");
-    });
-  }
+      renderAll();
+    }
+  });
 })();
 </script>
 </body>
