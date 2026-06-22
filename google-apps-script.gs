@@ -18,9 +18,11 @@
 const SHEET_ITEMS = 'Items';
 const SHEET_TXS = 'Transactions';
 const SHEET_LOCS = 'Locations';
+const SHEET_UNITS = 'Units';
 const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'supplier'];
 const TX_HEADERS = ['id', 'itemId', 'type', 'qty', 'before', 'after', 'note', 'ts'];
 const LOC_HEADERS = ['name'];
+const UNIT_HEADERS = ['name'];
 
 /** 取得或建立工作表（含標題列） */
 function getSheet(name, headers) {
@@ -73,11 +75,12 @@ function doPost(e) {
   return json({ error: 'unknown action: ' + body.action });
 }
 
-/** 讀取 Items + Transactions + Locations，回傳 JSON（Items 按 cat 排列） */
+/** 讀取 Items + Transactions + Locations + Units，回傳 JSON（Items 按 cat 排列） */
 function getAll() {
   const itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
   const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
+  const unitSheet = getSheet(SHEET_UNITS, UNIT_HEADERS);
   var items = readRows(itemSheet).map(function (r) {
     return {
       id: r[0], name: r[1], cat: r[2], unit: r[3],
@@ -100,17 +103,20 @@ function getAll() {
     };
   });
   const locations = readRows(locSheet).map(function (r) { return r[0] || ''; }).filter(function (n) { return n; });
-  return { items: items, txs: txs, locations: locations, syncedAt: Date.now() };
+  const units = readRows(unitSheet).map(function (r) { return r[0] || ''; }).filter(function (n) { return n; });
+  return { items: items, txs: txs, locations: locations, units: units, syncedAt: Date.now() };
 }
 
-/** 全量覆寫 Items + Transactions + Locations（Items 按 cat 排列） */
+/** 全量覆寫 Items + Transactions + Locations + Units（Items 按 cat 排列） */
 function saveAll(data) {
   const itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
   const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
+  const unitSheet = getSheet(SHEET_UNITS, UNIT_HEADERS);
   clearData(itemSheet);
   clearData(txSheet);
   clearData(locSheet);
+  clearData(unitSheet);
   var items = (data.items || []).slice();
   items.sort(function (a, b) {
     var ca = (a.cat || '').toString();
@@ -128,7 +134,10 @@ function saveAll(data) {
   (data.locations || []).forEach(function (name) {
     locSheet.appendRow([name]);
   });
-  return { ok: true, items: items.length, txs: (data.txs || []).length, locations: (data.locations || []).length };
+  (data.units || []).forEach(function (name) {
+    unitSheet.appendRow([name]);
+  });
+  return { ok: true, items: items.length, txs: (data.txs || []).length, locations: (data.locations || []).length, units: (data.units || []).length };
 }
 
 /** 建立供應商採購單新分頁 */

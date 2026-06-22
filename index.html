@@ -497,6 +497,16 @@
     </div>
 
     <div class="panel">
+      <div class="panel-head"><h3>📏 單位管理</h3></div>
+      <div class="info-note">管理物料的計量單位選項。新增、重新命名或刪除單位，所有下拉選單會即時更新。</div>
+      <div id="unit-list" style="margin-bottom:14px"></div>
+      <div class="toolbar" style="margin-bottom:0">
+        <input type="text" id="unit-new-name" placeholder="新增單位名稱…" style="flex:1;min-width:180px;font-family:inherit;font-size:15px;padding:9px 13px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:#fff;outline:none">
+        <button class="btn btn-primary" id="unit-add-btn">＋ 新增</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <div class="panel-head"><h3>💾 資料備份與還原</h3></div>
       <div class="info-note">即使啟用雲端同步，仍建議定期匯出 JSON 備份到本機，雙重保險。</div>
       <div class="sync-actions">
@@ -530,10 +540,7 @@
         </div>
         <div class="field">
           <label>單位 <span class="req">*</span></label>
-          <select id="item-unit">
-            <option>kg</option><option>g</option><option>L</option><option>ml</option>
-            <option>個</option><option>包</option><option>箱</option><option>瓶</option>
-          </select>
+          <select id="item-unit"></select>
         </div>
       </div>
       <div class="field-row">
@@ -623,6 +630,40 @@
     }
   };
 
+  const UNIT_KEY = "cafe_inventory_units";
+  const DEFAULT_UNITS = ["kg","g","L","ml","個","包","箱","瓶"];
+  const Units = {
+    load(){ try{ const v=JSON.parse(localStorage.getItem(UNIT_KEY)); return (Array.isArray(v)&&v.length)?v:DEFAULT_UNITS.slice(); }catch(e){ return DEFAULT_UNITS.slice(); } },
+    save(){ localStorage.setItem(UNIT_KEY, JSON.stringify(this._list)); },
+    _list:null,
+    all(){ if(!this._list) this._list=this.load(); return this._list; },
+    add(name){
+      name=name.trim();
+      if(!name) return {ok:false,msg:"名稱不可為空"};
+      if(this.all().some(u=>u===name)) return {ok:false,msg:"此單位已存在"};
+      this._list.push(name); this.save(); Store.commit(); return {ok:true};
+    },
+    rename(oldName,newName){
+      newName=newName.trim();
+      if(!newName) return {ok:false,msg:"名稱不可為空"};
+      if(oldName===newName) return {ok:true};
+      if(this.all().some(u=>u===newName)) return {ok:false,msg:"此名稱已存在"};
+      const idx=this._list.indexOf(oldName);
+      if(idx<0) return {ok:false,msg:"找不到原單位"};
+      this._list[idx]=newName; this.save();
+      db.items.forEach(it=>{ if(it.unit===oldName) it.unit=newName; });
+      Store.commit();
+      return {ok:true};
+    },
+    remove(name){
+      const idx=this._list.indexOf(name);
+      if(idx<0) return {ok:false,msg:"找不到此單位"};
+      const affected=db.items.filter(it=>it.unit===name);
+      if(affected.length>0) return {ok:false,msg:"此單位仍有 "+affected.length+" 項物料使用中",affected:affected.length};
+      this._list.splice(idx,1); this.save(); Store.commit(); return {ok:true};
+    }
+  };
+
   /* ---------- Store ---------- */
   const Store = {
     load(){
@@ -708,7 +749,7 @@
     if(syncInFlight){ if(!silent) toast("同步進行中，請稍候","bad"); return false; }
     syncInFlight=true; setSyncStatus("syncing");
     try{
-      const res=await fetch(Sync.cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"saveAll",data:{items:db.items,txs:db.txs,locations:Locations.all()}})});
+      const res=await fetch(Sync.cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"saveAll",data:{items:db.items,txs:db.txs,locations:Locations.all(),units:Units.all()}})});
       const j=await res.json();
       if(j.ok||j.items!==undefined){
         Sync.cfg.lastSync=Date.now(); Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok");
@@ -732,6 +773,9 @@
         if(j.locations && Array.isArray(j.locations) && j.locations.length>0){
           Locations._list=j.locations.slice(); Locations.save();
           refreshLocationDropdowns();
+        }
+        if(j.units && Array.isArray(j.units) && j.units.length>0){
+          Units._list=j.units.slice(); Units.save();
         }
         Sync.cfg.lastSync=Date.now(); Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok"); renderAll();
         if(!silent) toast("已從雲端下載 "+j.items.length+" 項物料","good");
@@ -765,6 +809,7 @@
     $("#sync-auto").checked=!!Sync.cfg.autoSync;
     updateSyncLog();
     renderLocationList();
+    renderUnitList();
   }
   function saveSyncSettings(){
     Sync.cfg.url=FIXED_SYNC_URL;
@@ -839,6 +884,52 @@
     refreshLocationDropdowns();
     renderItems();
     toast("已刪除位置「"+name+"」","good");
+  }
+
+  /* ---------- Unit management ---------- */
+  function renderUnitList(){
+    const list = $("#unit-list");
+    if(!list) return;
+    const units = Units.all();
+    if(units.length===0){ list.innerHTML = '<div class="empty" style="padding:20px"><span class="ico">📏</span>尚無單位</div>'; return; }
+    list.innerHTML = units.map(u=>{
+      const count = db.items.filter(it=>it.unit===u).length;
+      return `<div class="loc-row" data-unit="${esc(u)}">
+        <span class="loc-ico">📏</span>
+        <span class="loc-name">${esc(u)}</span>
+        <span class="loc-count">${count} 項物料</span>
+        <div class="loc-actions">
+          <button class="btn btn-outline btn-sm" data-unit-rename="${esc(u)}">重新命名</button>
+          <button class="btn btn-danger btn-sm" data-unit-delete="${esc(u)}">刪除</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  function addUnit(){
+    const input = $("#unit-new-name");
+    const name = input.value.trim();
+    if(!name){ toast("請輸入單位名稱","bad"); return; }
+    const r = Units.add(name);
+    if(!r.ok){ toast(r.msg,"bad"); return; }
+    input.value = "";
+    renderUnitList();
+    toast("已新增單位「"+name+"」","good");
+  }
+  function renameUnit(oldName){
+    const newName = prompt("將「"+oldName+"」重新命名為：", oldName);
+    if(newName===null) return;
+    const r = Units.rename(oldName, newName);
+    if(!r.ok){ toast(r.msg,"bad"); return; }
+    renderUnitList();
+    renderItems();
+    toast("已重新命名為「"+newName+"」","good");
+  }
+  function deleteUnit(name){
+    const r = Units.remove(name);
+    if(!r.ok){ toast(r.msg,"bad"); return; }
+    renderUnitList();
+    renderItems();
+    toast("已刪除單位「"+name+"」","good");
   }
 
   /* ---------- Navigation ---------- */
@@ -938,6 +1029,7 @@
   function openItemModal(id){
     const cats = $("#item-cat");
     cats.innerHTML = Locations.all().map(c=>`<option>${c}</option>`).join("");
+    $("#item-unit").innerHTML = Units.all().map(u=>`<option>${u}</option>`).join("");
     if(id){
       const it = db.items.find(x=>x.id===id);
       $("#item-modal-title").textContent = "編輯物料";
@@ -1293,6 +1385,16 @@
     const rd = e.target.closest("[data-loc-delete]");
     if(rn){ renameLocation(rn.dataset.locRename); return; }
     if(rd){ deleteLocation(rd.dataset.locDelete); return; }
+  });
+
+  // unit management events
+  $("#unit-add-btn").addEventListener("click",addUnit);
+  $("#unit-new-name").addEventListener("keydown",e=>{ if(e.key==="Enter") addUnit(); });
+  document.addEventListener("click",e=>{
+    const urn = e.target.closest("[data-unit-rename]");
+    const urd = e.target.closest("[data-unit-delete]");
+    if(urn){ renameUnit(urn.dataset.unitRename); return; }
+    if(urd){ deleteUnit(urd.dataset.unitDelete); return; }
   });
 
   $("#export-btn").addEventListener("click",exportData);
