@@ -639,7 +639,23 @@
   /* ---------- Utils ---------- */
   const $ = (s,r=document)=>r.querySelector(s);
   const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
-  const uid = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  function padNum(n){ return String(n).padStart(3,"0"); }
+  function nextItemId(){
+    let max=0;
+    db.items.forEach(it=>{
+      const m = /^ITM-(\d+)$/.exec(it.id||"");
+      if(m){ const n=parseInt(m[1],10); if(n>max) max=n; }
+    });
+    return "ITM-"+padNum(max+1);
+  }
+  function nextTxId(){
+    let max=0;
+    db.txs.forEach(t=>{
+      const m = /^TX-(\d+)$/.exec(t.id||"");
+      if(m){ const n=parseInt(m[1],10); if(n>max) max=n; }
+    });
+    return "TX-"+padNum(max+1);
+  }
   const money = n => "NT$"+(Number(n)||0).toLocaleString("zh-TW",{maximumFractionDigits:1});
   const fmtDate = ts => {
     const d = new Date(ts);
@@ -960,10 +976,10 @@
       toast("已更新物料","good");
     }else{
       const stock = parseFloat($("#item-stock").value)||0;
-      const nid = uid();
+      const nid = nextItemId();
       db.items.push(Object.assign({id:nid,stock},data));
       if(stock>0){
-        db.txs.push({id:uid(),itemId:nid,type:"in",qty:stock,before:0,after:stock,note:"初始建立",ts:Date.now()});
+        db.txs.push({id:nextTxId(),itemId:nid,type:"in",qty:stock,before:0,after:stock,note:"初始建立",ts:Date.now()});
       }
       toast("已新增物料","good");
     }
@@ -1039,7 +1055,7 @@
     if(after<0){ toast("出庫數量超過現有庫存","bad"); return; }
     it.stock = after;
     const ts = new Date(dateStr+"T"+new Date().toTimeString().slice(0,8)).getTime();
-    db.txs.push({id:uid(),itemId:id,type:txType,qty:+qty.toFixed(3),before,after,note,ts});
+    db.txs.push({id:nextTxId(),itemId:id,type:txType,qty:+qty.toFixed(3),before,after,note,ts});
     Store.commit();
     $("#tx-qty").value=""; $("#tx-note").value="";
     toast(`${typeLabel(txType)}成功！${it.name} 餘量：${after} ${it.unit}`,"good");
