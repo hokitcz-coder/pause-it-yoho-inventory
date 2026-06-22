@@ -10,14 +10,15 @@
  * 6. 複製產生的網址（結尾 /exec）貼到庫存系統的「設定」頁
  *
  * 資料結構：
- *   Items 工作表：id | name | cat（儲存位置） | unit | stock | min | price | supplier
+ *   Items 工作表：id | name | cat（儲存位置） | unit | stock | min | supplier
  *   Transactions 工作表：id | itemId | type | qty | before | after | note | ts
+ *   Locations 工作表：name
  */
 
 const SHEET_ITEMS = 'Items';
 const SHEET_TXS = 'Transactions';
 const SHEET_LOCS = 'Locations';
-const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'price', 'supplier'];
+const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'supplier'];
 const TX_HEADERS = ['id', 'itemId', 'type', 'qty', 'before', 'after', 'note', 'ts'];
 const LOC_HEADERS = ['name'];
 
@@ -72,17 +73,24 @@ function doPost(e) {
   return json({ error: 'unknown action: ' + body.action });
 }
 
-/** 讀取 Items + Transactions + Locations，回傳 JSON */
+/** 讀取 Items + Transactions + Locations，回傳 JSON（Items 按 cat 排列） */
 function getAll() {
   const itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
   const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
-  const items = readRows(itemSheet).map(function (r) {
+  var items = readRows(itemSheet).map(function (r) {
     return {
       id: r[0], name: r[1], cat: r[2], unit: r[3],
       stock: Number(r[4]) || 0, min: Number(r[5]) || 0,
-      price: Number(r[6]) || 0, supplier: r[7] || ''
+      supplier: r[6] || ''
     };
+  });
+  items.sort(function (a, b) {
+    var ca = (a.cat || '').toString();
+    var cb = (b.cat || '').toString();
+    if (ca < cb) return -1;
+    if (ca > cb) return 1;
+    return 0;
   });
   const txs = readRows(txSheet).map(function (r) {
     return {
@@ -95,7 +103,7 @@ function getAll() {
   return { items: items, txs: txs, locations: locations, syncedAt: Date.now() };
 }
 
-/** 全量覆寫 Items + Transactions + Locations */
+/** 全量覆寫 Items + Transactions + Locations（Items 按 cat 排列） */
 function saveAll(data) {
   const itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
@@ -103,8 +111,16 @@ function saveAll(data) {
   clearData(itemSheet);
   clearData(txSheet);
   clearData(locSheet);
-  (data.items || []).forEach(function (it) {
-    itemSheet.appendRow([it.id, it.name, it.cat, it.unit, it.stock, it.min, it.price, it.supplier || '']);
+  var items = (data.items || []).slice();
+  items.sort(function (a, b) {
+    var ca = (a.cat || '').toString();
+    var cb = (b.cat || '').toString();
+    if (ca < cb) return -1;
+    if (ca > cb) return 1;
+    return 0;
+  });
+  items.forEach(function (it) {
+    itemSheet.appendRow([it.id, it.name, it.cat, it.unit, it.stock, it.min, it.supplier || '']);
   });
   (data.txs || []).forEach(function (t) {
     txSheet.appendRow([t.id, t.itemId, t.type, t.qty, t.before, t.after, t.note || '', t.ts]);
@@ -112,7 +128,7 @@ function saveAll(data) {
   (data.locations || []).forEach(function (name) {
     locSheet.appendRow([name]);
   });
-  return { ok: true, items: (data.items || []).length, txs: (data.txs || []).length, locations: (data.locations || []).length };
+  return { ok: true, items: items.length, txs: (data.txs || []).length, locations: (data.locations || []).length };
 }
 
 /** 建立供應商採購單新分頁 */
