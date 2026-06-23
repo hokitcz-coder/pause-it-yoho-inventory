@@ -362,6 +362,7 @@
               <th>儲存位置</th>
               <th class="sortable" data-sort="stock">當前庫存<span class="arrow"></span></th>
               <th>安全庫存</th>
+              <th class="sortable" data-sort="suggest">建議庫存<span class="arrow"></span></th>
               <th>供應商</th>
               <th>操作</th>
             </tr>
@@ -554,9 +555,16 @@
           <input type="number" id="item-min" min="0" step="0.01" placeholder="0">
         </div>
       </div>
-      <div class="field">
-        <label>供應商</label>
-        <input type="text" id="item-supplier" placeholder="例：咖啡豆貿易公司">
+      <div class="field-row">
+        <div class="field">
+          <label>建議庫存（採購補到此量）</label>
+          <input type="number" id="item-suggest" min="0" step="0.01" placeholder="0">
+          <div class="field-hint">供應商採購單以此數減去當前庫存作為建議採購量</div>
+        </div>
+        <div class="field">
+          <label>供應商</label>
+          <input type="text" id="item-supplier" placeholder="例：咖啡豆貿易公司">
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -1010,11 +1018,13 @@
 
     const body = list.length ? list.map(i=>{
       const cls = i.stock<=0?"out":i.stock<=i.min?"low":"";
+      const sug = (i.suggestedStock != null && i.suggestedStock >= 0) ? i.suggestedStock : "—";
       return `<tr>
         <td><strong>${esc(i.name)}</strong></td>
         <td><span class="cat-tag">${i.cat}</span></td>
         <td><span class="stock-cell ${cls}">${i.stock} ${i.unit}</span></td>
         <td>${i.min} ${i.unit}</td>
+        <td>${sug!== "—" ? sug+" "+i.unit : "—"}</td>
         <td>${esc(i.supplier||"—")}</td>
         <td><div class="row-actions">
           <button class="btn btn-ghost btn-sm" data-stock-item="${i.id}">入出庫</button>
@@ -1022,7 +1032,7 @@
           <button class="btn btn-danger btn-sm" data-del-item="${i.id}">刪除</button>
         </div></td>
       </tr>`;
-    }).join("") : `<tr><td colspan="6"><div class="empty"><span class="ico">📦</span>尚無物料，點右上「新增物料」開始管理</div></td></tr>`;
+    }).join("") : `<tr><td colspan="7"><div class="empty"><span class="ico">📦</span>尚無物料，點右上「新增物料」開始管理</div></td></tr>`;
     $("#items-tbody").innerHTML = body;
   }
 
@@ -1039,11 +1049,12 @@
       $("#item-unit").value = it.unit;
       $("#item-stock").value = it.stock;
       $("#item-min").value = it.min;
+      $("#item-suggest").value = (it.suggestedStock != null) ? it.suggestedStock : "";
       $("#item-supplier").value = it.supplier||"";
     }else{
       $("#item-modal-title").textContent = "新增物料";
       ["item-id","item-name"].forEach(s=>$( "#"+s).value="");
-      $("#item-stock").value=0; $("#item-min").value=""; $("#item-supplier").value="";
+      $("#item-stock").value=0; $("#item-min").value=""; $("#item-suggest").value=""; $("#item-supplier").value="";
       cats.value = Locations.all()[0]||"";
     }
     $("#item-overlay").classList.add("show");
@@ -1055,11 +1066,13 @@
     if(!name){ toast("請輸入物料名稱","bad"); return; }
     if(isNaN(min) || min<0){ toast("請輸入有效的安全庫存","bad"); return; }
     const id = $("#item-id").value;
+    const sug = parseFloat($("#item-suggest").value);
     const data = {
       name,
       cat: $("#item-cat").value,
       unit: $("#item-unit").value,
       min: min,
+      suggestedStock: isNaN(sug) ? null : sug,
       supplier: $("#item-supplier").value.trim()
     };
     if(id){
@@ -1214,7 +1227,7 @@
       supplier: supplier,
       date: dateStr,
       items: items.map(it=>({ name:it.name, location:it.cat, stock:it.stock, min:it.min, unit:it.unit,
-        need: Math.max(0, +(it.min - it.stock).toFixed(3)) }))
+        need: Math.max(0, +(((it.suggestedStock != null && it.suggestedStock >= 0) ? it.suggestedStock : it.min) - it.stock).toFixed(3)) }))
     };
   }
   async function exportPOtoSheets(){
@@ -1247,7 +1260,7 @@
           <td>${esc(it.name)}</td>
           <td>${esc(it.location)}</td>
           <td class="r">${it.stock} ${it.unit}</td>
-          <td class="r">${it.min} ${it.unit}</td>
+          <td class="r">${(it.suggestedStock != null && it.suggestedStock >= 0) ? it.suggestedStock+" "+it.unit : it.min+" "+it.unit}</td>
           <td class="r">${needCell}</td>
         </tr>`;
     }).join("");
@@ -1261,7 +1274,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th class="c">#</th><th>物料名稱</th><th>儲存位置</th><th class="r">當前庫存</th><th class="r">安全庫存</th><th class="r">建議採購量</th></tr></thead>
+          <thead><tr><th class="c">#</th><th>物料名稱</th><th>儲存位置</th><th class="r">當前庫存</th><th class="r">建議庫存</th><th class="r">建議採購量</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <div class="po-sum">共 ${poData.items.length} 項，其中 <strong>${needCount}</strong> 項需採購</div>

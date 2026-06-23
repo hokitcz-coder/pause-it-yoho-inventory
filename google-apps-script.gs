@@ -19,7 +19,7 @@ const SHEET_ITEMS = 'Items';
 const SHEET_TXS = 'Transactions';
 const SHEET_LOCS = 'Locations';
 const SHEET_UNITS = 'Units';
-const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'supplier'];
+const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'suggest', 'supplier'];
 const TX_HEADERS = ['id', 'itemId', 'type', 'qty', 'before', 'after', 'note', 'ts'];
 const LOC_HEADERS = ['name'];
 const UNIT_HEADERS = ['name'];
@@ -82,10 +82,12 @@ function getAll() {
   const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
   const unitSheet = getSheet(SHEET_UNITS, UNIT_HEADERS);
   var items = readRows(itemSheet).map(function (r) {
+    var sug = Number(r[6]);
     return {
       id: r[0], name: r[1], cat: r[2], unit: r[3],
       stock: Number(r[4]) || 0, min: Number(r[5]) || 0,
-      supplier: r[6] || ''
+      suggestedStock: isNaN(sug) ? null : sug,
+      supplier: r[7] || ''
     };
   });
   items.sort(function (a, b) {
@@ -126,7 +128,7 @@ function saveAll(data) {
     return 0;
   });
   items.forEach(function (it) {
-    itemSheet.appendRow([it.id, it.name, it.cat, it.unit, it.stock, it.min, it.supplier || '']);
+    itemSheet.appendRow([it.id, it.name, it.cat, it.unit, it.stock, it.min, it.suggestedStock != null ? it.suggestedStock : '', it.supplier || '']);
   });
   (data.txs || []).forEach(function (t) {
     txSheet.appendRow([t.id, t.itemId, t.type, t.qty, t.before, t.after, t.note || '', t.ts]);
