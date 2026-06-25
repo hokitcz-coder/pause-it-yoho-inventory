@@ -109,17 +109,38 @@ function getAll() {
   return { items: items, txs: txs, locations: locations, units: units, syncedAt: Date.now() };
 }
 
-/** 全量覆寫 Items + Transactions + Locations + Units（Items 按 cat 排列） */
+/** 全量覆寫 Items + Transactions + Locations + Units（Items 按 cat 排列）
+ *  ⚠️ 安全機制：避免空白／陳舊資料覆蓋掉雲端最新數據 */
 function saveAll(data) {
+  const items = (data.items || []).slice();
+  const txs = (data.txs || []);
+  const locations = (data.locations || []);
+  const units = (data.units || []);
+
+  // ▸ 安全檢查 1：拒絕寫入空白資料（items 為 0 筆）
+  if (items.length === 0 && txs.length === 0) {
+    return { ok: false, error: 'SAFETY_BLOCK: 拒絕上傳空白資料，請重新從雲端下載後再操作。' };
+  }
+
+  // ▸ 安全檢查 2：如果雲端已有資料，但上傳的只有極少筆數，發出警告
   const itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
+  const cloudItemCount = Math.max(0, itemSheet.getLastRow() - 1); // 減去標題列
+  if (cloudItemCount > 10 && items.length < 3) {
+    return { ok: false, error: 'SAFETY_BLOCK: 雲端現有 ' + cloudItemCount + ' 筆物料，但只上傳了 ' + items.length + ' 筆。為防止資料遺失，已拒絕此操作。請先從雲端下載最新資料。' };
+  }
+
+  // ▸ 安全機制：清除前先備份到 _Backup 工作表
+  _backupBeforeOverwrite();
+
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
   const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
   const unitSheet = getSheet(SHEET_UNITS, UNIT_HEADERS);
+
   clearData(itemSheet);
   clearData(txSheet);
   clearData(locSheet);
   clearData(unitSheet);
-  var items = (data.items || []).slice();
+
   items.sort(function (a, b) {
     var ca = (a.cat || '').toString();
     var cb = (b.cat || '').toString();
@@ -130,16 +151,41 @@ function saveAll(data) {
   items.forEach(function (it) {
     itemSheet.appendRow([it.id, it.name, it.cat, it.unit, it.stock, it.min, it.suggestedStock != null ? it.suggestedStock : '', it.supplier || '']);
   });
-  (data.txs || []).forEach(function (t) {
+  txs.forEach(function (t) {
     txSheet.appendRow([t.id, t.itemId, t.type, t.qty, t.before, t.after, t.note || '', t.ts]);
   });
-  (data.locations || []).forEach(function (name) {
+  locations.forEach(function (name) {
     locSheet.appendRow([name]);
   });
-  (data.units || []).forEach(function (name) {
+  units.forEach(function (name) {
     unitSheet.appendRow([name]);
   });
-  return { ok: true, items: items.length, txs: (data.txs || []).length, locations: (data.locations || []).length, units: (data.units || []).length };
+  return { ok: true, items: items.length, txs: txs.length, locations: locations.length, units: units.length };
+}
+
+/** 在清除資料前，將目前所有工作表內容備份到 _Backup_* 工作表 */
+function _backupBeforeOverwrite() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+  const sheets = [
+    { name: SHEET_ITEMS, headers: ITEM_HEADERS },
+    { name: SHEET_TXS, headers: TX_HEADERS },
+    { name: SHEET_LOCS, headers: LOC_HEADERS },
+    { name: SHEET_UNITS, headers: UNIT_HEADERS }
+  ];
+  sheets.forEach(function (s) {
+    var src = ss.getSheetByName(s.name);
+    if (!src) return;
+    var lastRow = src.getLastRow();
+    if (lastRow <= 1) return; // 只有標題或不存在，跳過
+    var data = src.getRange(1, 1, lastRow, src.getLastColumn()).getValues();
+    var backupName = '_Backup_' + s.name + '_' + timestamp;
+    // 刪除舊備份（同一個名稱的）
+    var old = ss.getSheetByName(backupName);
+    if (old) ss.deleteSheet(old);
+    var backup = ss.insertSheet(backupName);
+    backup.getRange(1, 1, data.length, data[0].length).setValues(data);
+  });
 }
 
 /** 建立供應商採購單新分頁 */
