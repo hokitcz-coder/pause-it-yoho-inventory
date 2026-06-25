@@ -43,10 +43,12 @@ function readRows(sheet) {
   return sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
 }
 
-/** 清除標題列以下所有資料（保留標題） */
+/** 清除標題列以下所有資料（保留標題，使用 clearContent 避免凍結行報錯） */
 function clearData(sheet) {
-  const last = sheet.getLastRow();
-  if (last > 1) sheet.deleteRows(2, last - 1);
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
 }
 
 /** 輸出 JSON 回應 */
