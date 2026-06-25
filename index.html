@@ -762,9 +762,8 @@
     syncInFlight=true; setSyncStatus("syncing");
     try{
       const res=await fetch(Sync.cfg.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"saveAll",data:{items:db.items,txs:db.txs,locations:Locations.all(),units:Units.all()}})});
-      const ju=await res.json();
-      if(ju && ju.error && ju.error.indexOf("SAFETY_BLOCK")===0){ setSyncStatus("error"); toast(ju.error.replace("SAFETY_BLOCK: ",""),"bad"); syncInFlight=false; return false; }
       const j=await res.json();
+      if(j && j.error && j.error.indexOf("SAFETY_BLOCK")===0){ setSyncStatus("error"); toast(j.error.replace("SAFETY_BLOCK: ",""),"bad"); syncInFlight=false; return false; }
       if(j.ok||j.items!==undefined){
         Sync.cfg.lastSync=Date.now(); Sync.cfg.lastStatus="ok"; Sync.save(); setSyncStatus("ok");
         if(!silent) toast("已上傳 "+db.items.length+" 項物料到雲端","good");
