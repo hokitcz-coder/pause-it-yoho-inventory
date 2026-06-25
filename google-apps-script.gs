@@ -70,7 +70,10 @@ function doPost(e) {
   } catch (err) {
     return json({ error: 'invalid JSON' });
   }
-  if (body.action === 'saveAll') return json(saveAll(body.data));
+  if (body.action === 'saveAll') {
+    try { return json(saveAll(body.data)); }
+    catch (err) { return json({ ok: false, error: '伺服器錯誤：' + err.toString() }); }
+  }
   if (body.action === 'savePO') return json(savePO(body.data));
   return json({ error: 'unknown action: ' + body.action });
 }
@@ -129,8 +132,8 @@ function saveAll(data) {
     return { ok: false, error: 'SAFETY_BLOCK: 雲端現有 ' + cloudItemCount + ' 筆物料，但只上傳了 ' + items.length + ' 筆。為防止資料遺失，已拒絕此操作。請先從雲端下載最新資料。' };
   }
 
-  // ▸ 安全機制：清除前先備份到 _Backup 工作表
-  _backupBeforeOverwrite();
+  // ▸ 安全機制：清除前先備份到 _Backup 工作表（備份失敗不影響主流程）
+  _safeBackup();
 
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
   const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
@@ -163,6 +166,14 @@ function saveAll(data) {
   return { ok: true, items: items.length, txs: txs.length, locations: locations.length, units: units.length };
 }
 
+/** 安全備份：失敗不影響主流程 */
+function _safeBackup() {
+  try { _backupBeforeOverwrite(); } catch (e) {
+    // 備份失敗不應阻止正常儲存
+    Logger.log('Backup skipped: ' + e);
+  }
+}
+
 /** 在清除資料前，將目前所有工作表內容備份到 _Backup_* 工作表（固定名稱，每次覆蓋舊備份） */
 function _backupBeforeOverwrite() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -176,15 +187,13 @@ function _backupBeforeOverwrite() {
     var src = ss.getSheetByName(s.name);
     if (!src) return;
     var lastRow = src.getLastRow();
-    if (lastRow <= 1) return; // 只有標題或不存在，跳過
+    if (lastRow <= 1) return;
     var data = src.getRange(1, 1, lastRow, src.getLastColumn()).getValues();
     var backupName = '_Backup_' + s.name;
-    // 刪除舊備份，用固定名稱覆蓋
     var old = ss.getSheetByName(backupName);
     if (old) ss.deleteSheet(old);
     var backup = ss.insertSheet(backupName);
     backup.getRange(1, 1, data.length, data[0].length).setValues(data);
-    // 備份分頁隱藏，避免干擾日常工作
     backup.hideSheet();
   });
 }
