@@ -140,6 +140,14 @@ function saveAll(data) {
     return { ok: false, error: 'SAFETY_BLOCK: 雲端現有 ' + cloudItemCount + ' 筆物料，但只上傳了 ' + items.length + ' 筆。為防止資料遺失，已拒絕此操作。請先從雲端下載最新資料。' };
   }
 
+  // ▸ 效能優化：資料沒變就跳過寫入
+  const hash = _hash(JSON.stringify({ i: items, t: txs, l: locations, u: units }));
+  const props = PropertiesService.getDocumentProperties();
+  const lastHash = props.getProperty('LAST_SAVE_HASH');
+  if (hash === lastHash) {
+    return { ok: true, items: items.length, txs: txs.length, skipped: true };
+  }
+
   // 安全檢查通過，清除舊資料後寫入
   const txSheet = getSheet(SHEET_TXS, TX_HEADERS);
   const locSheet = getSheet(SHEET_LOCS, LOC_HEADERS);
@@ -183,6 +191,7 @@ function saveAll(data) {
     var unitRows = units.map(function (name) { return [name]; });
     unitSheet.getRange(2, 1, unitRows.length, 1).setValues(unitRows);
   }
+  props.setProperty('LAST_SAVE_HASH', hash);
   return { ok: true, items: items.length, txs: txs.length, locations: locations.length, units: units.length };
 }
 
@@ -231,4 +240,10 @@ function savePO(data) {
   sheet.setFrozenRows(4);
 
   return { ok: true, sheetName: sheetName, url: ss.getUrl() };
+}
+
+/** 計算字串的 MD5 哈希（用於比對資料是否變更） */
+function _hash(str) {
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, str, Utilities.Charset.UTF_8);
+  return raw.map(function (b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
 }
