@@ -163,10 +163,9 @@ function saveAll(data) {
   return { ok: true, items: items.length, txs: txs.length, locations: locations.length, units: units.length };
 }
 
-/** 在清除資料前，將目前所有工作表內容備份到 _Backup_* 工作表 */
+/** 在清除資料前，將目前所有工作表內容備份到 _Backup_* 工作表（固定名稱，每次覆蓋舊備份） */
 function _backupBeforeOverwrite() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
   const sheets = [
     { name: SHEET_ITEMS, headers: ITEM_HEADERS },
     { name: SHEET_TXS, headers: TX_HEADERS },
@@ -179,12 +178,14 @@ function _backupBeforeOverwrite() {
     var lastRow = src.getLastRow();
     if (lastRow <= 1) return; // 只有標題或不存在，跳過
     var data = src.getRange(1, 1, lastRow, src.getLastColumn()).getValues();
-    var backupName = '_Backup_' + s.name + '_' + timestamp;
-    // 刪除舊備份（同一個名稱的）
+    var backupName = '_Backup_' + s.name;
+    // 刪除舊備份，用固定名稱覆蓋
     var old = ss.getSheetByName(backupName);
     if (old) ss.deleteSheet(old);
     var backup = ss.insertSheet(backupName);
     backup.getRange(1, 1, data.length, data[0].length).setValues(data);
+    // 備份分頁隱藏，避免干擾日常工作
+    backup.hideSheet();
   });
 }
 
