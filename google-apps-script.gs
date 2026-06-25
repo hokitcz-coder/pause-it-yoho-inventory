@@ -43,11 +43,20 @@ function readRows(sheet) {
   return sheet.getRange(2, 1, last - 1, sheet.getLastColumn()).getValues();
 }
 
-/** 清除標題列以下所有資料（保留標題，使用 clearContent 避免凍結行報錯） */
+/** 清除標題列以下所有資料（保留標題） */
 function clearData(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) {
     sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+  }
+}
+
+/** 確保工作表有足夠的行數來寫入資料 */
+function ensureRows(sheet, neededRows) {
+  const current = sheet.getMaxRows();
+  const headerAndNeeded = 1 + neededRows; // 標題 + 資料行
+  if (current < headerAndNeeded) {
+    sheet.insertRows(current + 1, headerAndNeeded - current);
   }
 }
 
@@ -148,18 +157,32 @@ function saveAll(data) {
     if (ca > cb) return 1;
     return 0;
   });
-  items.forEach(function (it) {
-    itemSheet.appendRow([it.id, it.name, it.cat, it.unit, it.stock, it.min, it.suggestedStock != null ? it.suggestedStock : '', it.supplier || '']);
-  });
-  txs.forEach(function (t) {
-    txSheet.appendRow([t.id, t.itemId, t.type, t.qty, t.before, t.after, t.note || '', t.ts]);
-  });
-  locations.forEach(function (name) {
-    locSheet.appendRow([name]);
-  });
-  units.forEach(function (name) {
-    unitSheet.appendRow([name]);
-  });
+
+  // 批量寫入（setValues 比逐行 appendRow 快數十倍）
+  if (items.length > 0) {
+    ensureRows(itemSheet, items.length);
+    var itemRows = items.map(function (it) {
+      return [it.id, it.name, it.cat, it.unit, it.stock, it.min, it.suggestedStock != null ? it.suggestedStock : '', it.supplier || ''];
+    });
+    itemSheet.getRange(2, 1, itemRows.length, itemRows[0].length).setValues(itemRows);
+  }
+  if (txs.length > 0) {
+    ensureRows(txSheet, txs.length);
+    var txRows = txs.map(function (t) {
+      return [t.id, t.itemId, t.type, t.qty, t.before, t.after, t.note || '', t.ts];
+    });
+    txSheet.getRange(2, 1, txRows.length, txRows[0].length).setValues(txRows);
+  }
+  if (locations.length > 0) {
+    ensureRows(locSheet, locations.length);
+    var locRows = locations.map(function (name) { return [name]; });
+    locSheet.getRange(2, 1, locRows.length, 1).setValues(locRows);
+  }
+  if (units.length > 0) {
+    ensureRows(unitSheet, units.length);
+    var unitRows = units.map(function (name) { return [name]; });
+    unitSheet.getRange(2, 1, unitRows.length, 1).setValues(unitRows);
+  }
   return { ok: true, items: items.length, txs: txs.length, locations: locations.length, units: units.length };
 }
 
