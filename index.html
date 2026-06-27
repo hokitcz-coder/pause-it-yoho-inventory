@@ -1465,6 +1465,24 @@
       finishBoot("雲端連線失敗，使用本地資料");
     }
   });
+  /* ---------- iPad 後臺恢復：提示重新下載 ---------- */
+  let _visibilityBooted = false;
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden) return;
+    if(!_visibilityBooted){ _visibilityBooted=true; return; } // 首次載入略過
+    if(!Sync.on) return;
+    const ONE_HOUR = 3600000;
+    const last = Sync.cfg.lastSync || 0;
+    if(Date.now() - last < ONE_HOUR) return;
+    if(confirm("你已離開超過一小時，資料可能過時。\n要重新從雲端下載最新資料嗎？")){
+      toast("正在從雲端下載...","");
+      syncDown(false).then(function(ok){
+        if(ok){ renderAll(); toast("下載完成","good"); }
+        else { toast("下載失敗，請檢查網路","bad"); }
+      });
+    }
+  });
+
 })();
 </script>
 </body>
