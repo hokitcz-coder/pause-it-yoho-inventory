@@ -24,7 +24,7 @@ const TX_HEADERS = ['id', 'itemId', 'type', 'qty', 'before', 'after', 'note', 't
 const LOC_HEADERS = ['name'];
 const UNIT_HEADERS = ['name'];
 
-/** 取得或建立工作表（含標題列） */
+/** 取得或建立工作表（含標題列，已存在則自動補齊缺失欄位） */
 function getSheet(name, headers) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(name);
@@ -32,6 +32,16 @@ function getSheet(name, headers) {
     sheet = ss.insertSheet(name);
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);
+  } else {
+    // 自動補齊缺失的標題列
+    var existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    headers.forEach(function (h, i) {
+      if (existingHeaders.indexOf(h) === -1) {
+        sheet.insertColumnAfter(sheet.getLastColumn());
+        sheet.getRange(1, sheet.getLastColumn()).setValue(h);
+        existingHeaders.push(h); // 同步本地追蹤
+      }
+    });
   }
   return sheet;
 }
