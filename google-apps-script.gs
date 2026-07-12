@@ -19,7 +19,7 @@ const SHEET_ITEMS = 'Items';
 const SHEET_TXS = 'Transactions';
 const SHEET_LOCS = 'Locations';
 const SHEET_UNITS = 'Units';
-const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'suggest', 'supplier'];
+const ITEM_HEADERS = ['id', 'name', 'cat', 'unit', 'stock', 'min', 'suggest', 'price', 'supplier'];
 const TX_HEADERS = ['id', 'itemId', 'type', 'qty', 'before', 'after', 'note', 'ts'];
 const LOC_HEADERS = ['name'];
 const UNIT_HEADERS = ['name'];
@@ -70,6 +70,10 @@ function json(obj) {
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'getAll';
   if (action === 'getAll') return json(getAll());
+  if (action === 'monthlyReport') {
+    const ym = (e && e.parameter && e.parameter.ym) || '';
+    return json(getMonthlyReport(ym));
+  }
   return json({ error: 'unknown action: ' + action });
 }
 
@@ -98,7 +102,8 @@ function getAll() {
       id: r[0], name: r[1], cat: r[2], unit: r[3],
       stock: Number(r[4]) || 0, min: Number(r[5]) || 0,
       suggestedStock: isNaN(sug) ? null : sug,
-      supplier: r[7] || ''
+      price: Number(r[7]) || 0,
+      supplier: r[8] || ''
     };
   });
   items.sort(function (a, b) {
@@ -170,7 +175,7 @@ function saveAll(data) {
   if (items.length > 0) {
     ensureRows(itemSheet, items.length);
     var itemRows = items.map(function (it) {
-      return [it.id, it.name, it.cat, it.unit, it.stock, it.min, it.suggestedStock != null ? it.suggestedStock : '', it.supplier || ''];
+      return [it.id, it.name, it.cat, it.unit, it.stock, it.min, it.suggestedStock != null ? it.suggestedStock : '', it.price != null ? it.price : '', it.supplier || ''];
     });
     itemSheet.getRange(2, 1, itemRows.length, itemRows[0].length).setValues(itemRows);
   }
@@ -193,6 +198,76 @@ function saveAll(data) {
   }
   props.setProperty('LAST_SAVE_HASH', hash);
   return { ok: true, items: items.length, txs: txs.length, locations: locations.length, units: units.length };
+}
+
+/** 月度報表：匯總當月入庫金額、出庫成本、消耗排行
+ *  @param {string} ym - 格式 YYYY-MM，不傳則用當月 */
+function getMonthlyReport(ym) {
+  if (!ym) {
+    var now = new Date();
+    ym = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+  }
+  var parts = ym.split('-');
+  var y = parseInt(parts[0], 10);
+  var m = parseInt(parts[1], 10);
+  var monthStart = new Date(y, m - 1, 1).getTime();
+  var monthEnd = new Date(y, m, 1).getTime();
+
+  var itemSheet = getSheet(SHEET_ITEMS, ITEM_HEADERS);
+  var allItems = readRows(itemSheet);
+  var itemMap = {};
+  allItems.forEach(function (r) {
+    itemMap[r[0]] = { name: r[1] || '', unit: r[3] || '', price: Number(r[7]) || 0 };
+  });
+
+  var txSheet = getSheet(SHEET_TXS, TX_HEADERS);
+  var allTxs = readRows(txSheet);
+  var monthTxs = allTxs.filter(function (r) {
+    var ts = Number(r[7]) || 0;
+    return ts >= monthStart && ts < monthEnd;
+  });
+
+  var itemStats = {};
+  var totalInAmt = 0, totalOutAmt = 0;
+
+  monthTxs.forEach(function (r) {
+    var itemId = r[1];
+    var type = r[2];
+    var qty = Number(r[3]) || 0;
+    var info = itemMap[itemId] || { name: '(已刪除)', unit: '', price: 0 };
+    var price = info.price;
+    var amt = Math.round(qty * price * 100) / 100;
+
+    if (!itemStats[itemId]) {
+      itemStats[itemId] = { id: itemId, name: info.name, unit: info.unit, price: price, inQty: 0, outQty: 0, inAmt: 0, outAmt: 0 };
+    }
+    if (type === 'in') {
+      itemStats[itemId].inQty = Math.round((itemStats[itemId].inQty + qty) * 1000) / 1000;
+      itemStats[itemId].inAmt = Math.round((itemStats[itemId].inAmt + amt) * 100) / 100;
+      totalInAmt = Math.round((totalInAmt + amt) * 100) / 100;
+    } else if (type === 'out') {
+      itemStats[itemId].outQty = Math.round((itemStats[itemId].outQty + qty) * 1000) / 1000;
+      itemStats[itemId].outAmt = Math.round((itemStats[itemId].outAmt + amt) * 100) / 100;
+      totalOutAmt = Math.round((totalOutAmt + amt) * 100) / 100;
+    }
+  });
+
+  var list = Object.keys(itemStats).map(function (k) { return itemStats[k]; });
+  list.sort(function (a, b) { return b.outAmt - a.outAmt; });
+
+  var inCount = monthTxs.filter(function (r) { return r[2] === 'in'; }).length;
+  var outCount = monthTxs.filter(function (r) { return r[2] === 'out'; }).length;
+
+  return {
+    ym: ym,
+    period: y + '年' + m + '月',
+    totalInAmt: totalInAmt,
+    totalOutAmt: totalOutAmt,
+    inCount: inCount,
+    outCount: outCount,
+    itemCount: list.length,
+    items: list
+  };
 }
 
 /** 建立供應商採購單新分頁 */

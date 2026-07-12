@@ -282,6 +282,38 @@
   }
   @keyframes spin{to{transform:rotate(360deg)}}
   #loading-overlay .loading-status{color:rgba(255,255,255,.55);font-size:13px;margin-top:-4px}
+
+  /* ---- 月度报表 ---- */
+  .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
+  .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
+  .report-card .lbl{font-size:13px;color:var(--muted);margin-top:4px}
+  .report-card.in .amt{color:var(--good)}
+  .report-card.out .amt{color:var(--bad)}
+  .report-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .report-table th{background:var(--cream);color:var(--espresso);font-weight:600;font-size:13px;padding:10px 12px;text-align:left;white-space:nowrap}
+  .report-table td{padding:9px 12px;font-size:14px;border-bottom:1px solid var(--line)}
+  .report-table tr:last-child td{border-bottom:none}
+  .report-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .report-table .bar-wrap{width:80px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+  .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
+
+
+  /* ---- 月度报表 ---- */
+  .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
+  .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
+  .report-card .lbl{font-size:13px;color:var(--muted);margin-top:4px}
+  .report-card.in .amt{color:var(--good)}
+  .report-card.out .amt{color:var(--bad)}
+  .report-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .report-table th{background:var(--cream);color:var(--espresso);font-weight:600;font-size:13px;padding:10px 12px;text-align:left;white-space:nowrap}
+  .report-table td{padding:9px 12px;font-size:14px;border-bottom:1px solid var(--line)}
+  .report-table tr:last-child td{border-bottom:none}
+  .report-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .report-table .bar-wrap{width:80px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+  .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
+
 </style>
 </head>
 <body>
@@ -301,7 +333,7 @@
     <nav id="nav">
       <button data-page="dashboard" class="active">儀表板</button>
       <button data-page="items">物料管理</button>
-      <button data-page="stock">入出庫</button>
+      <button data-page="stock">入出库</button><button data-page="report">月度报表</button>
       <button data-page="history">歷史記錄</button>
       <button data-page="alerts">低庫存預警</button>
       <button data-page="settings"><span class="sync-dot gray" id="sync-dot"></span>設定</button>
@@ -463,6 +495,20 @@
   </section>
 
   <!-- ============ Settings ============ -->
+    <!-- ============ 月度报表 ============ -->
+  <section class="page" id="page-report">
+    <div class="page-title">月度报表</div>
+    <div class="page-sub">查看每月进货金额、物料消耗成本与消耗排行</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+      <label style="font-weight:600;color:var(--espresso);font-size:15px">月份：</label>
+      <input type="month" id="report-month" style="font-family:inherit;font-size:15px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:#fff;outline:none">
+      <button class="btn" id="report-load">查询</button>
+    </div>
+    <div id="report-content" style="margin-top:16px">
+      <div style="text-align:center;color:var(--muted);padding:40px">请选择月份后点击查询</div>
+    </div>
+  </section>
+
   <section class="page" id="page-settings">
     <div class="page-title">設定</div>
     <div class="page-sub">雲端同步與資料管理</div>
@@ -563,6 +609,14 @@
           <label>建議庫存（採購補到此量）</label>
           <input type="number" id="item-suggest" min="0" step="0.01" placeholder="0">
           <div class="field-hint">供應商採購單以此數減去當前庫存作為建議採購量</div>
+        </div>
+        <div class="field">
+          <label>單價 (HKD)</label>
+          <input type="number" id="item-price" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>單價 (HKD)</label>
+          <input type="number" id="item-price" min="0" step="0.01" placeholder="0.00">
         </div>
         <div class="field">
           <label>供應商</label>
@@ -1055,7 +1109,7 @@
       $("#item-stock").value = it.stock;
       $("#item-min").value = it.min;
       $("#item-suggest").value = (it.suggestedStock != null) ? it.suggestedStock : "";
-      $("#item-supplier").value = it.supplier||"";
+      $("#item-price").value = it.price||""; $("#item-price").value = it.price||""; $("#item-supplier").value = it.supplier||"";
     }else{
       $("#item-modal-title").textContent = "新增物料";
       ["item-id","item-name"].forEach(s=>$( "#"+s).value="");
@@ -1078,6 +1132,8 @@
       unit: $("#item-unit").value,
       min: min,
       suggestedStock: isNaN(sug) ? null : sug,
+      price: parseFloat($("#item-price").value)||0,
+      price: parseFloat($("#item-price").value)||0,
       supplier: $("#item-supplier").value.trim()
     };
     if(id){
@@ -1310,7 +1366,39 @@
         .po-sum{padding:10px 20px;font-size:13px;color:#6f4e37;background:#faf5ee;border-top:1px solid #e0d4c2}
         .po-sign{display:flex;justify-content:space-between;gap:16px;padding:14px 20px;font-size:13px;color:#8a7766;flex-wrap:wrap}
         @media print{body{padding:0}.po{page-break-inside:avoid}}
-      </style></head><body>${body}
+      
+  /* ---- 月度报表 ---- */
+  .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
+  .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
+  .report-card .lbl{font-size:13px;color:var(--muted);margin-top:4px}
+  .report-card.in .amt{color:var(--good)}
+  .report-card.out .amt{color:var(--bad)}
+  .report-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .report-table th{background:var(--cream);color:var(--espresso);font-weight:600;font-size:13px;padding:10px 12px;text-align:left;white-space:nowrap}
+  .report-table td{padding:9px 12px;font-size:14px;border-bottom:1px solid var(--line)}
+  .report-table tr:last-child td{border-bottom:none}
+  .report-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .report-table .bar-wrap{width:80px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+  .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
+
+
+  /* ---- 月度报表 ---- */
+  .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
+  .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
+  .report-card .lbl{font-size:13px;color:var(--muted);margin-top:4px}
+  .report-card.in .amt{color:var(--good)}
+  .report-card.out .amt{color:var(--bad)}
+  .report-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .report-table th{background:var(--cream);color:var(--espresso);font-weight:600;font-size:13px;padding:10px 12px;text-align:left;white-space:nowrap}
+  .report-table td{padding:9px 12px;font-size:14px;border-bottom:1px solid var(--line)}
+  .report-table tr:last-child td{border-bottom:none}
+  .report-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .report-table .bar-wrap{width:80px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+  .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
+
+</style></head><body>${body}
       <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
     </body></html>`;
     const w = window.open("","_blank");
@@ -1465,6 +1553,67 @@
       finishBoot("雲端連線失敗，使用本地資料");
     }
   });
+
+  /* ============ 月度报表 ============ */
+  function fmtCurrency(v){ return (v||0).toFixed(2); }
+  function fmtNum(v){ return (v||0).toLocaleString("zh-HK",{maximumFractionDigits:1}); }
+
+  $("#report-load").addEventListener("click",function(){ loadMonthlyReport(); });
+  var navReportBtn = document.querySelector("#nav button[data-page='report']");
+  if(navReportBtn) navReportBtn.addEventListener("click",function(){
+    var now = new Date();
+    $("#report-month").value = now.getFullYear() + "-" + ("0"+(now.getMonth()+1)).slice(-2);
+  });
+
+  async function loadMonthlyReport(){
+    var ym = $("#report-month").value;
+    if(!ym){ toast("请选择月份","bad"); return; }
+    var container = $("#report-content");
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">查询中...</div>';
+    try{
+      var res = await fetch(Sync.cfg.url+"?action=monthlyReport&ym="+encodeURIComponent(ym));
+      var j = await res.json();
+      if(!j || !j.items){ throw new Error("无效的回应"); }
+      renderReport(j);
+    }catch(e){
+      container.innerHTML = '<div style="text-align:center;color:var(--bad);padding:40px">查询失败：'+e.message+'</div>';
+    }
+  }
+
+  function renderReport(r){
+    var container = $("#report-content");
+    var maxOutAmt = 1;
+    r.items.forEach(function(it){ if(it.outAmt > maxOutAmt) maxOutAmt = it.outAmt; });
+
+    var html = '<div class="page-sub">'+r.period+' · 入库 '+r.inCount+' 次 · 出库 '+r.outCount+' 次</div>';
+    html += '<div class="report-summary">';
+    html += '<div class="report-card in"><div class="amt">HK$ '+fmtCurrency(r.totalInAmt)+'</div><div class="lbl">进货金额</div></div>';
+    html += '<div class="report-card out"><div class="amt">HK$ '+fmtCurrency(r.totalOutAmt)+'</div><div class="lbl">物料消耗成本</div></div>';
+    html += '<div class="report-card"><div class="amt">'+r.itemCount+'</div><div class="lbl">有异动的物料数</div></div>';
+    html += '</div>';
+
+    if(r.items.length === 0){
+      html += '<div style="text-align:center;color:var(--muted);padding:30px">本月尚无入出库纪录</div>';
+    } else {
+      html += '<table class="report-table"><thead><tr><th>物料</th><th>单位</th><th>单价</th><th>入库量</th><th>进货金额</th><th>出库量</th><th>消耗成本</th><th>占比</th></tr></thead><tbody>';
+      r.items.forEach(function(it){
+        var pct = maxOutAmt > 0 ? Math.round(it.outAmt / maxOutAmt * 100) : 0;
+        html += '<tr>';
+        html += '<td>'+it.name+'</td>';
+        html += '<td>'+it.unit+'</td>';
+        html += '<td class="num">'+fmtCurrency(it.price)+'</td>';
+        html += '<td class="num">'+fmtNum(it.inQty)+'</td>';
+        html += '<td class="num">'+fmtCurrency(it.inAmt)+'</td>';
+        html += '<td class="num">'+fmtNum(it.outQty)+'</td>';
+        html += '<td class="num">'+fmtCurrency(it.outAmt)+'</td>';
+        html += '<td class="num"><span class="bar-wrap"><span class="bar-fill" style="width:'+pct+'%"></span></span>'+pct+'%</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+    }
+    container.innerHTML = html;
+  }
+
   /* ---------- iPad 後臺恢復：提示重新下載 ---------- */
   let _visibilityBooted = false;
   document.addEventListener("visibilitychange",function(){
