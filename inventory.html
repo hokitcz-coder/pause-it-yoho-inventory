@@ -314,6 +314,21 @@
   .report-table .bar-wrap{width:80px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
   .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
 
+
+  /* ---- Print ---- */
+  @media print{
+    header, nav, #toast, #loading-overlay, .btn, input[type="month"], label[for], 
+    .page-sub, .report-summary .report-card:not(.in):not(.out), 
+    #report-print, #report-load{display:none!important}
+    body{background:#fff!important}
+    .page-title{font-size:20px;margin-bottom:8px}
+    .report-card.in, .report-card.out{box-shadow:none;border:1px solid #ccc}
+    .report-card .amt{font-size:18px}
+    .report-table{box-shadow:none;border:1px solid #ccc}
+    .report-table th{background:#f0f0f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{margin:12mm}
+  }
+
 </style>
 </head>
 <body>
@@ -503,6 +518,7 @@
       <label style="font-weight:600;color:var(--espresso);font-size:15px">月份：</label>
       <input type="month" id="report-month" style="font-family:inherit;font-size:15px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:#fff;outline:none">
       <button class="btn" id="report-load">查询</button>
+      <button class="btn btn-ghost" id="report-print" style="margin-left:auto">打印</button>
     </div>
     <div id="report-content" style="margin-top:16px">
       <div style="text-align:center;color:var(--muted);padding:40px">请选择月份后点击查询</div>
@@ -1393,6 +1409,21 @@
   .report-table .bar-wrap{width:80px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
   .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
 
+
+  /* ---- Print ---- */
+  @media print{
+    header, nav, #toast, #loading-overlay, .btn, input[type="month"], label[for], 
+    .page-sub, .report-summary .report-card:not(.in):not(.out), 
+    #report-print, #report-load{display:none!important}
+    body{background:#fff!important}
+    .page-title{font-size:20px;margin-bottom:8px}
+    .report-card.in, .report-card.out{box-shadow:none;border:1px solid #ccc}
+    .report-card .amt{font-size:18px}
+    .report-table{box-shadow:none;border:1px solid #ccc}
+    .report-table th{background:#f0f0f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{margin:12mm}
+  }
+
 </style></head><body>${body}
       <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
     </body></html>`;
@@ -1555,9 +1586,11 @@
 
   $("#report-load").addEventListener("click",function(){ loadMonthlyReport(); });
   var navReportBtn = document.querySelector("#nav button[data-page='report']");
+  $("#report-print").addEventListener("click",function(){ window.print(); });
   if(navReportBtn) navReportBtn.addEventListener("click",function(){
     var now = new Date();
     $("#report-month").value = now.getFullYear() + "-" + ("0"+(now.getMonth()+1)).slice(-2);
+    loadMonthlyReport();
   });
 
   async function loadMonthlyReport(){
