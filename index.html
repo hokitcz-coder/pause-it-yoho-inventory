@@ -283,7 +283,7 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   #loading-overlay .loading-status{color:rgba(255,255,255,.55);font-size:13px;margin-top:-4px}
 
-  /* ---- 月度报表 ---- */
+  /* ---- 月度報表 ---- */
   .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
   .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
   .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
@@ -299,7 +299,7 @@
   .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
 
 
-  /* ---- 月度报表 ---- */
+  /* ---- 月度報表 ---- */
   .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
   .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
   .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
@@ -348,7 +348,7 @@
     <nav id="nav">
       <button data-page="dashboard" class="active">儀表板</button>
       <button data-page="items">物料管理</button>
-      <button data-page="stock">入出库</button><button data-page="report">月度报表</button>
+      <button data-page="stock">入出庫</button><button data-page="report">月度報表</button>
       <button data-page="history">歷史記錄</button>
       <button data-page="alerts">低庫存預警</button>
       <button data-page="settings"><span class="sync-dot gray" id="sync-dot"></span>設定</button>
@@ -510,18 +510,18 @@
   </section>
 
   <!-- ============ Settings ============ -->
-    <!-- ============ 月度报表 ============ -->
+    <!-- ============ 月度報表 ============ -->
   <section class="page" id="page-report">
-    <div class="page-title">月度报表</div>
-    <div class="page-sub">查看每月进货金额、物料消耗成本与消耗排行</div>
+    <div class="page-title">月度報表</div>
+    <div class="page-sub">查看每月進貨金額、物料消耗成本与消耗排行</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
       <label style="font-weight:600;color:var(--espresso);font-size:15px">月份：</label>
       <input type="month" id="report-month" style="font-family:inherit;font-size:15px;padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius-sm);background:#fff;outline:none">
-      <button class="btn" id="report-load">查询</button>
+      <button class="btn" id="report-load">查詢</button>
       <button class="btn btn-ghost" id="report-print" style="margin-left:auto">打印</button>
     </div>
     <div id="report-content" style="margin-top:16px">
-      <div style="text-align:center;color:var(--muted);padding:40px">请选择月份后点击查询</div>
+      <div style="text-align:center;color:var(--muted);padding:40px">請選擇月份后點擊查詢</div>
     </div>
   </section>
 
@@ -1378,7 +1378,7 @@
         .po-sign{display:flex;justify-content:space-between;gap:16px;padding:14px 20px;font-size:13px;color:#8a7766;flex-wrap:wrap}
         @media print{body{padding:0}.po{page-break-inside:avoid}}
       
-  /* ---- 月度报表 ---- */
+  /* ---- 月度報表 ---- */
   .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
   .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
   .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
@@ -1394,7 +1394,7 @@
   .report-table .bar-fill{height:100%;background:var(--bad);border-radius:3px}
 
 
-  /* ---- 月度报表 ---- */
+  /* ---- 月度報表 ---- */
   .report-summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
   .report-card{flex:1;min-width:140px;background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);text-align:center}
   .report-card .amt{font-size:22px;font-weight:700;color:var(--espresso)}
@@ -1580,7 +1580,7 @@
     }
   });
 
-  /* ============ 月度报表 ============ */
+  /* ============ 月度報表 ============ */
   function fmtCurrency(v){ return (v||0).toFixed(2); }
   function fmtNum(v){ return (v||0).toLocaleString("zh-HK",{maximumFractionDigits:1}); }
 
@@ -1595,16 +1595,16 @@
 
   async function loadMonthlyReport(){
     var ym = $("#report-month").value;
-    if(!ym){ toast("请选择月份","bad"); return; }
+    if(!ym){ toast("請選擇月份","bad"); return; }
     var container = $("#report-content");
-    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">查询中...</div>';
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">查詢中...</div>';
     try{
       var res = await fetch(Sync.cfg.url+"?action=monthlyReport&ym="+encodeURIComponent(ym));
       var j = await res.json();
-      if(!j || !j.items){ throw new Error("无效的回应"); }
+      if(!j || !j.items){ throw new Error("無效的回应"); }
       renderReport(j);
     }catch(e){
-      container.innerHTML = '<div style="text-align:center;color:var(--bad);padding:40px">查询失败：'+e.message+'</div>';
+      container.innerHTML = '<div style="text-align:center;color:var(--bad);padding:40px">查詢失敗：'+e.message+'</div>';
     }
   }
 
@@ -1613,17 +1613,17 @@
     var maxOutAmt = 1;
     r.items.forEach(function(it){ if(it.outAmt > maxOutAmt) maxOutAmt = it.outAmt; });
 
-    var html = '<div class="page-sub">'+r.period+' · 入库 '+r.inCount+' 次 · 出库 '+r.outCount+' 次</div>';
+    var html = '<div class="page-sub">'+r.period+' · 入庫 '+r.inCount+' 次 · 出庫 '+r.outCount+' 次</div>';
     html += '<div class="report-summary">';
-    html += '<div class="report-card in"><div class="amt">HK$ '+fmtCurrency(r.totalInAmt)+'</div><div class="lbl">进货金额</div></div>';
+    html += '<div class="report-card in"><div class="amt">HK$ '+fmtCurrency(r.totalInAmt)+'</div><div class="lbl">進貨金額</div></div>';
     html += '<div class="report-card out"><div class="amt">HK$ '+fmtCurrency(r.totalOutAmt)+'</div><div class="lbl">物料消耗成本</div></div>';
-    html += '<div class="report-card"><div class="amt">'+r.itemCount+'</div><div class="lbl">有异动的物料数</div></div>';
+    html += '<div class="report-card"><div class="amt">'+r.itemCount+'</div><div class="lbl">有異動的物料數</div></div>';
     html += '</div>';
 
     if(r.items.length === 0){
-      html += '<div style="text-align:center;color:var(--muted);padding:30px">本月尚无入出库纪录</div>';
+      html += '<div style="text-align:center;color:var(--muted);padding:30px">本月尚無入出庫紀錄</div>';
     } else {
-      html += '<table class="report-table"><thead><tr><th>物料</th><th>单位</th><th>单价</th><th>入库量</th><th>进货金额</th><th>出库量</th><th>消耗成本</th><th>占比</th></tr></thead><tbody>';
+      html += '<table class="report-table"><thead><tr><th>物料</th><th>單位</th><th>單價</th><th>入庫量</th><th>進貨金額</th><th>出庫量</th><th>消耗成本</th><th>佔比</th></tr></thead><tbody>';
       r.items.forEach(function(it){
         var pct = maxOutAmt > 0 ? Math.round(it.outAmt / maxOutAmt * 100) : 0;
         html += '<tr>';
