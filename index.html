@@ -353,6 +353,21 @@
   .item-btn .btn-stock{font-size:12px;color:var(--muted);margin-top:2px}
   @media(min-width:500px){.item-btn-grid{grid-template-columns:1fr 1fr 1fr}}
 
+
+  /* ---- 数字键盘 ---- */
+  .numpad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;max-width:260px}
+  .numpad button{
+    height:44px;border:1.5px solid var(--line);border-radius:var(--radius-sm);
+    background:#fff;font-size:18px;font-weight:600;color:var(--espresso);
+    cursor:pointer;transition:.12s;font-family:inherit;
+    -webkit-tap-highlight-color:transparent;user-select:none;
+    display:grid;place-items:center;
+  }
+  .numpad button:hover{background:var(--cream)}
+  .numpad button:active{background:var(--espresso);color:#fff}
+  .numpad .np-del{font-size:15px;color:var(--muted)}
+  .numpad .np-q{grid-column:span 2;font-size:14px;color:var(--muted);border-color:var(--caramel)}
+
 </style>
 </head>
 <body>
@@ -471,6 +486,12 @@
         <div class="field">
           <label>數量 <span class="req">*</span></label>
           <input type="number" id="tx-qty" min="0" step="0.01" placeholder="0" inputmode="decimal">
+<div class="numpad" id="tx-numpad">
+    <button data-np="1">1</button><button data-np="2">2</button><button data-np="3">3</button><button class="np-del" data-np="del">⌫</button>
+    <button data-np="4">4</button><button data-np="5">5</button><button data-np="6">6</button><button data-np="dot">.</button>
+    <button data-np="7">7</button><button data-np="8">8</button><button data-np="9">9</button><button data-np="0">0</button>
+    <button class="np-q" data-np="+1">+1</button><button class="np-q" data-np="+5">+5</button>
+  </div>
         </div>
         <div class="field">
           <label>日期</label>
@@ -1495,6 +1516,21 @@
   .item-btn .btn-stock{font-size:12px;color:var(--muted);margin-top:2px}
   @media(min-width:500px){.item-btn-grid{grid-template-columns:1fr 1fr 1fr}}
 
+
+  /* ---- 数字键盘 ---- */
+  .numpad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;max-width:260px}
+  .numpad button{
+    height:44px;border:1.5px solid var(--line);border-radius:var(--radius-sm);
+    background:#fff;font-size:18px;font-weight:600;color:var(--espresso);
+    cursor:pointer;transition:.12s;font-family:inherit;
+    -webkit-tap-highlight-color:transparent;user-select:none;
+    display:grid;place-items:center;
+  }
+  .numpad button:hover{background:var(--cream)}
+  .numpad button:active{background:var(--espresso);color:#fff}
+  .numpad .np-del{font-size:15px;color:var(--muted)}
+  .numpad .np-q{grid-column:span 2;font-size:14px;color:var(--muted);border-color:var(--caramel)}
+
 </style></head><body>${body}
       <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
     </body></html>`;
@@ -1577,6 +1613,19 @@ $$("#type-tabs .type-tab").forEach(b=> b.addEventListener("click",()=> setTxType
     selectItem(btn.dataset.item);
   });
   $("#tx-submit").addEventListener("click",submitTx);
+/* ---------- Numpad ---------- */
+  const txQtyInput = $("#tx-qty");
+  $("#tx-numpad").addEventListener("click",function(e){
+    const btn = e.target.closest("button"); if(!btn) return;
+    const v = btn.dataset.np;
+    const cur = txQtyInput.value;
+    if(v==="del"){ txQtyInput.value = cur.slice(0,-1); }
+    else if(v==="dot"){ if(!cur.includes(".")) txQtyInput.value = cur + "."; }
+    else if(v==="+1"){ txQtyInput.value = (parseFloat(cur)||0) + 1; }
+    else if(v==="+5"){ txQtyInput.value = (parseFloat(cur)||0) + 5; }
+    else { txQtyInput.value = cur + v; }
+    txQtyInput.dispatchEvent(new Event("input",{bubbles:true}));
+  });
 
   $("#item-search").addEventListener("input",renderItems);
   $("#item-cat-filter").addEventListener("change",renderItems);
