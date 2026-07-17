@@ -329,6 +329,30 @@
     @page{margin:12mm}
   }
 
+
+  /* ---- Stock page chips & item buttons ---- */
+  .chip-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .chip{
+    padding:6px 14px;border-radius:20px;border:1.5px solid var(--line);
+    background:#fff;color:var(--espresso);font-size:14px;cursor:pointer;
+    transition:.15s;user-select:none;white-space:nowrap;
+    font-family:inherit;-webkit-tap-highlight-color:transparent;
+  }
+  .chip:hover{border-color:var(--latte)}
+  .chip.active{background:var(--espresso);border-color:var(--espresso);color:#fff}
+  .item-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .item-btn{
+    background:#fff;border:1.5px solid var(--line);border-radius:var(--radius-sm);
+    padding:10px 12px;cursor:pointer;transition:.15s;text-align:left;
+    font-family:inherit;font-size:14px;line-height:1.3;
+    -webkit-tap-highlight-color:transparent;user-select:none;
+  }
+  .item-btn:hover{border-color:var(--latte)}
+  .item-btn.active{border-color:var(--espresso);background:var(--cream)}
+  .item-btn .btn-name{font-weight:600;color:var(--espresso)}
+  .item-btn .btn-stock{font-size:12px;color:var(--muted);margin-top:2px}
+  @media(min-width:500px){.item-btn-grid{grid-template-columns:1fr 1fr 1fr}}
+
 </style>
 </head>
 <body>
@@ -423,12 +447,12 @@
     </div>
   </section>
 
-  <!-- ============ Stock ops ============ -->
+<!-- ============ Stock ops ============ -->
   <section class="page" id="page-stock">
     <div class="page-title">入出庫作業</div>
     <div class="page-sub">記錄進貨、消耗或盤點調整，系統自動更新庫存</div>
 
-    <div class="panel" style="max-width:560px">
+    <div class="panel" style="max-width:640px">
       <div class="type-tabs" id="type-tabs">
         <button class="type-tab active in" data-type="in">📥 入庫</button>
         <button class="type-tab out" data-type="out">📤 出庫</button>
@@ -437,18 +461,16 @@
 
       <div class="field">
         <label>儲存位置</label>
-        <select id="tx-location">
-          <option value="">— 全部位置 —</option>
-        </select>
+        <div class="chip-group" id="tx-location"></div>
       </div>
       <div class="field">
         <label>選擇物料 <span class="req">*</span></label>
-        <select id="tx-item"></select>
+        <div class="item-btn-grid" id="tx-item"></div>
       </div>
       <div class="field-row">
         <div class="field">
           <label>數量 <span class="req">*</span></label>
-          <input type="number" id="tx-qty" min="0" step="0.01" placeholder="0">
+          <input type="number" id="tx-qty" min="0" step="0.01" placeholder="0" inputmode="decimal">
         </div>
         <div class="field">
           <label>日期</label>
@@ -462,6 +484,8 @@
       <div class="hint-bar" id="tx-preview">請選擇物料並輸入數量</div>
       <button class="btn btn-primary" id="tx-submit" style="width:100%;justify-content:center">確認送出</button>
     </div>
+  </section>
+
   </section>
 
   <!-- ============ History ============ -->
@@ -1175,32 +1199,51 @@
       toast("已刪除物料","good");
     });
   }
-
-  /* ---------- Stock operations ---------- */
-  let txType = "in";
+/* ---------- Stock operations ---------- */
+  let txType = "in", txSelectedLoc = "", txSelectedItem = "";
   function initStockPage(){
-    const locSel = $("#tx-location");
-    const prevLoc = locSel.value;
-    locSel.innerHTML = `<option value="">— 全部位置 —</option>` + Locations.all().map(l=>`<option>${esc(l)}</option>`).join("");
-    if(prevLoc && [...locSel.options].some(o=>o.value===prevLoc)) locSel.value = prevLoc;
-    locSel.value = "";
-    populateTxItems("");
+    renderTxLocations();
+    renderTxItems();
     if(!$("#tx-date").value) $("#tx-date").value = todayStr();
     updateTxPreview();
   }
-  function populateTxItems(loc){
-    const sel = $("#tx-item");
-    const filtered = loc ? db.items.filter(i=>i.cat===loc) : db.items;
-    sel.innerHTML = `<option value="">— 請選擇物料 —</option>` + filtered.map(i=>
-      `<option value="${i.id}">${esc(i.name)} （現存 ${i.stock} ${i.unit}）</option>`).join("");
+  function renderTxLocations(){
+    const container = $("#tx-location");
+    container.innerHTML = '<button class="chip active" data-loc="">全部</button>' +
+      Locations.all().map(l=>'<button class="chip" data-loc="'+esc(l)+'">'+esc(l)+'</button>').join("");
+    // click handler via delegation below
+  }
+  function renderTxItems(){
+    const container = $("#tx-item");
+    const filtered = txSelectedLoc ? db.items.filter(i=>i.cat===txSelectedLoc) : db.items;
+    if(filtered.length === 0){
+      container.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);padding:12px;text-align:center">此位置暫無物料</div>';
+      return;
+    }
+    container.innerHTML = filtered.map(i=>{
+      const sel = i.id===txSelectedItem ? " active" : "";
+      return '<button class="item-btn'+sel+'" data-item="'+i.id+'"><div class="btn-name">'+esc(i.name)+'</div><div class="btn-stock">現存 '+i.stock+' '+esc(i.unit)+'</div></button>';
+    }).join("");
   }
   function setTxType(t){
     txType = t;
     $$("#type-tabs .type-tab").forEach(b=> b.classList.toggle("active", b.dataset.type===t));
     updateTxPreview();
   }
+  function selectLocation(loc){
+    txSelectedLoc = loc;
+    txSelectedItem = "";
+    $$("#tx-location .chip").forEach(b=> b.classList.toggle("active", b.dataset.loc===loc));
+    renderTxItems();
+    updateTxPreview();
+  }
+  function selectItem(id){
+    txSelectedItem = (txSelectedItem===id) ? "" : id; // toggle off on re-click
+    $$("#tx-item .item-btn").forEach(b=> b.classList.toggle("active", b.dataset.item===txSelectedItem));
+    updateTxPreview();
+  }
   function updateTxPreview(){
-    const id = $("#tx-item").value;
+    const id = txSelectedItem;
     const qty = parseFloat($("#tx-qty").value);
     const p = $("#tx-preview");
     if(!id){ p.textContent = "請選擇物料並輸入數量"; return; }
@@ -1217,7 +1260,7 @@
     p.innerHTML = `<strong>${esc(it.name)}</strong>：${it.stock} ${it.unit} → <strong>${after} ${it.unit}</strong>（${verb}${lowWarn}）`;
   }
   function submitTx(){
-    const id = $("#tx-item").value;
+    const id = txSelectedItem;
     const qty = parseFloat($("#tx-qty").value);
     const note = $("#tx-note").value.trim();
     const dateStr = $("#tx-date").value || todayStr();
@@ -1228,15 +1271,19 @@
     let after;
     if(txType==="in") after = +(before+qty).toFixed(3);
     else if(txType==="out") after = +(before-qty).toFixed(3);
-    else after = +qty.toFixed(3);
+    else after = qty;
     if(after<0){ toast("出庫數量超過現有庫存","bad"); return; }
     it.stock = after;
     const ts = new Date(dateStr+"T"+new Date().toTimeString().slice(0,8)).getTime();
     db.txs.push({id:nextTxId(),itemId:id,type:txType,qty:+qty.toFixed(3),before,after,note,ts});
     Store.commit();
+    // 一鍵重置：清數量+備註，保留位置和類型，重新渲染物料
     $("#tx-qty").value=""; $("#tx-note").value="";
-    toast(`${typeLabel(txType)}成功！${it.name} 餘量：${after} ${it.unit}`,"good");
-    initStockPage();
+    txSelectedItem = "";
+    renderTxItems();
+    updateTxPreview();
+    const warnType = (after<=it.min && txType==="out") ? "bad" : "good";
+    toast(`${typeLabel(txType)}成功！${it.name} 餘量：${after} ${it.unit}`, warnType);
   }
 
   /* ---------- History ---------- */
@@ -1424,6 +1471,30 @@
     @page{margin:12mm}
   }
 
+
+  /* ---- Stock page chips & item buttons ---- */
+  .chip-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .chip{
+    padding:6px 14px;border-radius:20px;border:1.5px solid var(--line);
+    background:#fff;color:var(--espresso);font-size:14px;cursor:pointer;
+    transition:.15s;user-select:none;white-space:nowrap;
+    font-family:inherit;-webkit-tap-highlight-color:transparent;
+  }
+  .chip:hover{border-color:var(--latte)}
+  .chip.active{background:var(--espresso);border-color:var(--espresso);color:#fff}
+  .item-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .item-btn{
+    background:#fff;border:1.5px solid var(--line);border-radius:var(--radius-sm);
+    padding:10px 12px;cursor:pointer;transition:.15s;text-align:left;
+    font-family:inherit;font-size:14px;line-height:1.3;
+    -webkit-tap-highlight-color:transparent;user-select:none;
+  }
+  .item-btn:hover{border-color:var(--latte)}
+  .item-btn.active{border-color:var(--espresso);background:var(--cream)}
+  .item-btn .btn-name{font-weight:600;color:var(--espresso)}
+  .item-btn .btn-stock{font-size:12px;color:var(--muted);margin-top:2px}
+  @media(min-width:500px){.item-btn-grid{grid-template-columns:1fr 1fr 1fr}}
+
 </style></head><body>${body}
       <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
     </body></html>`;
@@ -1482,7 +1553,7 @@
     const s = e.target.closest("[data-stock-item],[data-edit-item],[data-del-item],[data-close]");
     if(!s) return;
     if(s.dataset.close){ closeOverlay(s.dataset.close); return; }
-    if(s.dataset.stockItem){ go("stock"); const it=db.items.find(x=>x.id===s.dataset.stockItem); if(it){ $("#tx-location").value=it.cat; populateTxItems(it.cat); $("#tx-item").value=s.dataset.stockItem; } setTxType("in"); updateTxPreview(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+    if(s.dataset.stockItem){ go("stock"); const it=db.items.find(x=>x.id===s.dataset.stockItem); if(it){ txSelectedLoc=it.cat; renderTxLocations(); renderTxItems(); txSelectedItem=s.dataset.stockItem; renderTxItems(); } setTxType("in"); updateTxPreview(); window.scrollTo({top:0,behavior:"smooth"}); return; }
     if(s.dataset.editItem){ openItemModal(s.dataset.editItem); return; }
     if(s.dataset.delItem){ deleteItem(s.dataset.delItem); return; }
   });
@@ -1493,9 +1564,18 @@
   $("#item-save").addEventListener("click",saveItem);
   $("#confirm-ok").addEventListener("click",()=>{ if(confirmCb) confirmCb(); closeOverlay("confirm-overlay"); confirmCb=null; });
 
-  $$("#type-tabs .type-tab").forEach(b=> b.addEventListener("click",()=> setTxType(b.dataset.type)));
-  ["tx-item","tx-qty"].forEach(id=> $("#"+id).addEventListener("input",updateTxPreview));
-  $("#tx-location").addEventListener("change",()=>{ populateTxItems($("#tx-location").value); $("#tx-item").value=""; updateTxPreview(); });
+$$("#type-tabs .type-tab").forEach(b=> b.addEventListener("click",()=> setTxType(b.dataset.type)));
+  $("#tx-qty").addEventListener("input",updateTxPreview);
+  // chip button click delegation
+  $("#tx-location").addEventListener("click",e=>{
+    const chip = e.target.closest(".chip"); if(!chip) return;
+    selectLocation(chip.dataset.loc);
+  });
+  // item button click delegation
+  $("#tx-item").addEventListener("click",e=>{
+    const btn = e.target.closest(".item-btn"); if(!btn) return;
+    selectItem(btn.dataset.item);
+  });
   $("#tx-submit").addEventListener("click",submitTx);
 
   $("#item-search").addEventListener("input",renderItems);
