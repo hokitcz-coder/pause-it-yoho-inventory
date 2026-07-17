@@ -355,18 +355,25 @@
 
 
   /* ---- 数字键盘 ---- */
-  .numpad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;max-width:260px}
-  .numpad button{
-    height:44px;border:1.5px solid var(--line);border-radius:var(--radius-sm);
-    background:#fff;font-size:18px;font-weight:600;color:var(--espresso);
-    cursor:pointer;transition:.12s;font-family:inherit;
+  .numpad-wrap{background:#fff;border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin-top:4px}
+  .numpad-display{
+    font-size:28px;font-weight:700;color:var(--espresso);text-align:right;
+    padding:8px 12px 12px;border-bottom:2px solid var(--line);margin-bottom:12px;
+    min-height:48px;word-break:break-all;line-height:1.2;
+  }
+  .numpad-display.placeholder{color:var(--muted);font-weight:400;font-size:14px}
+  .numpad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .numpad-grid button{
+    height:48px;border:none;border-radius:var(--radius-sm);
+    background:var(--cream);font-size:20px;font-weight:600;color:var(--espresso);
+    cursor:pointer;transition:.1s;font-family:inherit;
     -webkit-tap-highlight-color:transparent;user-select:none;
     display:grid;place-items:center;
   }
-  .numpad button:hover{background:var(--cream)}
-  .numpad button:active{background:var(--espresso);color:#fff}
-  .numpad .np-del{font-size:15px;color:var(--muted)}
-  .numpad .np-q{grid-column:span 2;font-size:14px;color:var(--muted);border-color:var(--caramel)}
+  .numpad-grid button:active{transform:scale(.94);background:var(--espresso);color:#fff}
+  .numpad-grid .np-num{background:#fff;border:1px solid var(--line)}
+  .numpad-grid .np-del{font-size:16px;color:var(--muted);background:transparent}
+  .numpad-grid .np-clr{grid-column:span 4;font-size:14px;color:var(--muted);background:transparent;border:1px dashed var(--line);height:38px}
 
 </style>
 </head>
@@ -485,14 +492,16 @@
       <div class="field-row">
         <div class="field">
           <label>數量 <span class="req">*</span></label>
-          <input type="number" id="tx-qty" min="0" step="0.01" placeholder="0" inputmode="decimal">
-<div class="numpad" id="tx-numpad">
-    <button data-np="1">1</button><button data-np="2">2</button><button data-np="3">3</button><button class="np-del" data-np="del">⌫</button>
-    <button data-np="4">4</button><button data-np="5">5</button><button data-np="6">6</button><button data-np="dot">.</button>
-    <button data-np="7">7</button><button data-np="8">8</button><button data-np="9">9</button><button data-np="0">0</button>
-    <button class="np-q" data-np="+1">+1</button><button class="np-q" data-np="+5">+5</button>
-  </div>
-        </div>
+          <input type="hidden" id="tx-qty" value="">
+          <div class="numpad-wrap">
+            <div class="numpad-display placeholder" id="tx-qty-display">點擊按鈕輸入數量</div>
+            <div class="numpad-grid" id="tx-numpad">
+              <button class="np-num" data-np="7">7</button><button class="np-num" data-np="8">8</button><button class="np-num" data-np="9">9</button><button class="np-del" data-np="del">⌫</button>
+              <button class="np-num" data-np="4">4</button><button class="np-num" data-np="5">5</button><button class="np-num" data-np="6">6</button><button class="np-num" data-np="dot">.</button>
+              <button class="np-num" data-np="1">1</button><button class="np-num" data-np="2">2</button><button class="np-num" data-np="3">3</button><button class="np-num" data-np="0">0</button>
+              <button class="np-clr" data-np="clr">清除</button>
+            </div>
+          </div>
         <div class="field">
           <label>日期</label>
           <input type="date" id="tx-date">
@@ -1614,16 +1623,22 @@ $$("#type-tabs .type-tab").forEach(b=> b.addEventListener("click",()=> setTxType
   });
   $("#tx-submit").addEventListener("click",submitTx);
 /* ---------- Numpad ---------- */
-  const txQtyInput = $("#tx-qty");
+  var txQtyInput = $("#tx-qty");
+  var txQtyDisp = $("#tx-qty-display");
+  function updateQtyDisplay(){
+    var v = txQtyInput.value;
+    if(v === "" || v === "0"){ txQtyDisp.textContent = "點擊按鈕輸入數量"; txQtyDisp.classList.add("placeholder"); }
+    else { txQtyDisp.textContent = v; txQtyDisp.classList.remove("placeholder"); }
+  }
   $("#tx-numpad").addEventListener("click",function(e){
-    const btn = e.target.closest("button"); if(!btn) return;
-    const v = btn.dataset.np;
-    const cur = txQtyInput.value;
-    if(v==="del"){ txQtyInput.value = cur.slice(0,-1); }
-    else if(v==="dot"){ if(!cur.includes(".")) txQtyInput.value = cur + "."; }
-    else if(v==="+1"){ txQtyInput.value = (parseFloat(cur)||0) + 1; }
-    else if(v==="+5"){ txQtyInput.value = (parseFloat(cur)||0) + 5; }
+    var btn = e.target.closest("button"); if(!btn) return;
+    var v = btn.dataset.np;
+    var cur = txQtyInput.value;
+    if(v === "del"){ txQtyInput.value = cur.slice(0,-1); }
+    else if(v === "clr"){ txQtyInput.value = ""; }
+    else if(v === "dot"){ if(cur.indexOf(".") < 0) txQtyInput.value = cur + (cur ? "." : "0."); }
     else { txQtyInput.value = cur + v; }
+    updateQtyDisplay();
     txQtyInput.dispatchEvent(new Event("input",{bubbles:true}));
   });
 
